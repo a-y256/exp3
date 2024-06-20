@@ -14,7 +14,7 @@ void loop() {
         char operators[10]; // 数値間の演算子を格納する
         
         int operandCount = 0; // 数値の数
-        int operatorIndex = -1; // 現在の演算子のインデックス
+        int operatorIndex = -1; // 現在の演算子のインデックスa
         
         // 入力文字列をスキャンして数値と演算子を抽出
         int startIndex = 0;
