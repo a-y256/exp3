@@ -14,21 +14,21 @@ void loop() {
         char operators[10]; // 数値間の演算子を格納する
         
         int operandCount = 0; // 数値の数
-        int operatorIndex = -1; // 現在の演算子のインデックスa
+        int operatorIndex = -1; // 現在の演算子のインデックス
         
         // 入力文字列をスキャンして数値と演算子を抽出
         int startIndex = 0;
         int endIndex = 0;
         
         while (endIndex <= input.length()) {
-        if (endIndex == input.length() || input.charAt(endIndex) == ' ' || isOperator(input.charAt(endIndex))) {
-            if (startIndex < endIndex) {
-                operands[operandCount++] = input.substring(startIndex, endIndex).toFloat();
-                if (endIndex < input.length() && isOperator(input.charAt(endIndex))) {
-                    operators[++operatorIndex] = input.charAt(endIndex);
+            if (endIndex == input.length() || input.charAt(endIndex) == ' ' || isOperator(input.charAt(endIndex))) {
+                if (startIndex < endIndex) {
+                    operands[operandCount++] = input.substring(startIndex, endIndex).toFloat();
+                    if (endIndex < input.length() && isOperator(input.charAt(endIndex))) {
+                        operators[++operatorIndex] = input.charAt(endIndex);
+                    }
                 }
-            }
-            startIndex = endIndex + 1;
+                startIndex = endIndex + 1;
             }
             endIndex++;
         }
@@ -75,6 +75,8 @@ void loop() {
                     Serial.println(": error (unsupported operation)");
                     return;
             }
+         
+        }
         
         // 結果を出力する
         Serial.print("Result: ");
