@@ -1,17 +1,19 @@
 #include <LiquidCrystal.h>
 #include <IRremote.h>
 #include <HID-Project.h>
+#include <math.h>
 
+// LCDの初期化
 LiquidCrystal lcd(7, 8, 9, 10, 11, 12);
 
+// IR受信機
 int receiver = 3; // IR受信機の信号ピンをArduinoのデジタルピン3に接続
+IRrecv irrecv(receiver); // 'irrecv'のインスタンスを作成
+decode_results results; // 'decode_results'のインスタンスを作成
 
-IRrecv irrecv(receiver);     // 'irrecv'のインスタンスを作成
-decode_results results;      // 'decode_results'のインスタンスを作成
-
-const int maxDigits = 16;  // 最大表示桁数
+const int maxDigits = 16; // 最大表示桁数
 char enteredDigits[maxDigits + 1] = ""; // 入力された数値を保存する配列
-bool waitingForExponent = false; // 次に入力されるのが指数かどうかを示すフラグ
+float lastResult = 0; // 最後の計算結果を保存
 
 void translateIR() {
   switch(results.value) {
@@ -23,13 +25,18 @@ void translateIR() {
       Serial.println("FUNC/STOP"); 
       addSymbolToDisplay('w');
       break;
-    case 0xFF629D: Serial.println("VOL+"); break;
-    case 0xFF22DD: Serial.println("FAST BACK"); break;
+    case 0xFF629D: 
+      Serial.println("VOL+"); 
+      addSymbolToDisplay('+');
+      break;
+    case 0xFF22DD: 
+      Serial.println("FAST BACK"); 
+      calculateAndDisplayResult();
+      break;
     case 0xFF02FD: 
       Serial.println("PAUSE"); 
       addSymbolToDisplay('r');
       break;
-    
     case 0xFFC23D: Serial.println("FAST FORWARD"); break;
     case 0xFFE01F: 
       Serial.println("DOWN");
@@ -37,7 +44,10 @@ void translateIR() {
       break;
     case 0xFFA857: Serial.println("VOL-"); break;
     case 0xFF906F: Serial.println("UP"); break;
-    case 0xFF9867: Serial.println("EQ"); break;
+    case 0xFF9867: 
+      Serial.println("EQ"); 
+      addSymbolToDisplay('s');
+      break;
     case 0xFFB04F: 
       Serial.println("ST/REPT"); 
       resetDisplay();
@@ -55,7 +65,6 @@ void translateIR() {
     case 0xFFFFFFFF: Serial.println("REPEAT"); break;
     default: Serial.println("other button");
   }
-
   delay(500); // 即座のリピートを防ぐ
 } 
 
@@ -84,7 +93,99 @@ void resetDisplay() {
   lcd.setCursor(0, 1);
   lcd.print("                "); // LCDの2行目をクリア
   lcd.setCursor(0, 1);
-  waitingForExponent = false; // フラグをリセット
+}
+
+void calculateAndDisplayResult() {
+  float result = 0;
+  if (enteredDigits[0] == 's' || enteredDigits[0] == 'c' || enteredDigits[0] == 't' || enteredDigits[0] == 'r') {
+    char func = enteredDigits[0];
+    float value = atof(enteredDigits + 1);
+    switch (func) {
+      case 's':
+        result = sin(value * PI / 180.0);
+        break;
+      case 'c':
+        result = cos(value * PI / 180.0);
+        break;
+      case 't':
+        result = tan(value * PI / 180.0);
+        break;
+      case 'r':
+        result = sqrt(value);
+        break;
+    }
+  } else {
+    // 数値と操作子を格納するリスト
+    float operands[10]; // 最大10個の数値を処理
+    char operators[10]; // 数値間の演算子を格納
+    int operandCount = 0; // 数値の数
+    int operatorIndex = -1; // 現在の演算子のインデックス
+    int startIndex = 0;
+    int endIndex = 0;
+
+    while (endIndex <= strlen(enteredDigits)) {
+      if (endIndex == strlen(enteredDigits) || enteredDigits[endIndex] == ' ' || isOperator(enteredDigits[endIndex])) {
+        if (startIndex < endIndex) {
+          operands[operandCount++] = atof(enteredDigits + startIndex);
+          if (endIndex < strlen(enteredDigits) && isOperator(enteredDigits[endIndex])) {
+            operators[++operatorIndex] = enteredDigits[endIndex];
+          }
+        }
+        startIndex = endIndex + 1;
+      }
+      endIndex++;
+    }
+
+    result = operands[0];
+    for (int i = 0; i <= operatorIndex; i++) {
+      switch (operators[i]) {
+        case '+':
+          result += operands[i + 1];
+          break;
+        case '-':
+          result -= operands[i + 1];
+          break;
+        case '*':
+          result *= operands[i + 1];
+          break;
+        case '/':
+          if (operands[i + 1] != 0) {
+            result /= operands[i + 1];
+          } else {
+            lcd.setCursor(0, 1);
+            lcd.print("Error: Div by 0");
+            Serial.println("Error: Division by zero");
+            return;
+          }
+          break;
+        case '^':
+          result = pow(operands[i], operands[i + 1]);
+          break;
+        default:
+          lcd.setCursor(0, 1);
+          lcd.print("Error: Invalid Op");
+          Serial.println("Error: Invalid operator");
+          return;
+      }
+    }
+  }
+
+  // 結果をLCDに表示
+  lcd.setCursor(0, 1);
+  lcd.print("                "); // クリア
+  lcd.setCursor(0, 1);
+  lcd.print(enteredDigits);
+  lcd.print("=");
+  lcd.print(result);
+  
+  // 結果をシリアルモニタに表示
+  Serial.print("Result: ");
+  Serial.print(enteredDigits);
+  Serial.print("=");
+  Serial.println(result);
+
+  // 最後の計算結果を保存
+  lastResult = result;
 }
 
 void sendEquationToPC() {
@@ -95,13 +196,10 @@ void sendEquationToPC() {
   Keyboard.releaseAll();
   
   // 数式をPCに送信
-  bool foundSlash = false;
-  bool inFraction = false;
   for (int i = 0; i < strlen(enteredDigits); i++) {
     char c = enteredDigits[i];
     if (c == 'w') {
       Keyboard.print("/");
-      foundSlash = true;
     } else if (c == '^') {
       // シフトキーと一緒に3を押して^を送信
       Keyboard.press(KEY_LEFT_SHIFT);
@@ -109,19 +207,25 @@ void sendEquationToPC() {
       delay(400);
       Keyboard.releaseAll();
     } else if (c == 'r') {
-      // 'r'を見つけたら、\sqrtを送信
       Keyboard.press(KEY_F8);
       delay(400);
       Keyboard.print("sqrt ");
+      delay(400);
+    }else if (c == 's') {
+      Keyboard.press(KEY_F8);
+      delay(400);
+      Keyboard.print("sin ");
+      delay(400);
     } else {
       Keyboard.print(c);
     }
   }
-  
-  if (inFraction) {
-    Keyboard.print("}");
-  }
-  
+
+  // 結果をPCに送信
+  Keyboard.press(KEY_HOME);
+   delay(400); // 少しの間押し続ける
+  Keyboard.print(lastResult);
+
   // エンターキーを送信
   Keyboard.write(KEY_RETURN);
   
@@ -129,16 +233,16 @@ void sendEquationToPC() {
   resetDisplay();
 }
 
+bool isOperator(char c) {
+  return (c == '+' || c == '-' || c == '*' || c == '/' || c == '^');
+}
+
 void setup() {
-  // 無線
   Serial.begin(9600);
-  Serial.println("IR Receiver Button Decode"); 
   irrecv.enableIRIn(); // 受信機を開始
-  // ディスプレイ
   lcd.begin(16, 2);
   lcd.print("Number entered.");
-  // HIDの初期化
-  Keyboard.begin();
+  Keyboard.begin(); // HIDキーボードの初期化
 }
 
 void loop() {
