@@ -10,13 +10,11 @@ void loop() {
 
         String input = Serial.readStringUntil('\n'); // 改行までの文字列を読み込む
         input.trim(); // 先頭と末尾の空白を除去する
-        input.replace("= =", "="); // 余分な '=' を削除する
         input = preprocessInput(input); // 入力を簡略化された形式に対応する
 
         if (input.startsWith("i ")) {
             float result = integrate(input);
             Serial.print(input);
-            Serial.print(" = ");
             Serial.println(result, 2); // 結果を2桁の精度で表示
         } else if (input.startsWith("l ")) {
             float result = calculateLog(input);
@@ -24,13 +22,20 @@ void loop() {
             Serial.print(input.substring(2, input.indexOf(' ', 2)));
             Serial.print(" ");
             Serial.print(input.substring(input.indexOf(' ', 2) + 1));
-            Serial.print(" = ");
             Serial.println(result, 2); // 結果を2桁の精度で表示
-        } else {
-            // 通常の計算処理
-            float result = evaluateExpression(input);
+        } else if (input.startsWith("b ")) {
+            float result = evaluateFraction(input);
             Serial.print(input);
             Serial.print(" = ");
+            Serial.println(result, 2); // 結果を2桁の精度で表示
+        } else if (input.startsWith("asin") || input.startsWith("acos") || input.startsWith("atan")) {
+            float result = evaluateInverseTrig(input);
+            Serial.print(input);
+            Serial.print(" = ");
+            Serial.println(result, 0); // 結果を整数で表示
+        } else {
+            float result = evaluateExpression(input);
+            Serial.print(input);
             Serial.println(result, 2); // 結果を2桁の精度で表示
         }
     }
@@ -41,13 +46,15 @@ String preprocessInput(String input) {
     input.replace("s", "sin");
     input.replace("c", "cos");
     input.replace("t", "tan");
+    input.replace("asin", "asin");
+    input.replace("acos", "acos");
+    input.replace("atan", "atan");
     input.replace("r", "sqrt");
     return input;
 }
 
 // 数式の評価
 float evaluateExpression(String expr) {
-    // 括弧を処理する
     int startIdx, endIdx;
     while ((startIdx = expr.lastIndexOf('(')) != -1) {
         endIdx = expr.indexOf(')', startIdx);
@@ -59,8 +66,6 @@ float evaluateExpression(String expr) {
         float subResult = evaluateExpression(subExpr);
         expr = expr.substring(0, startIdx) + String(subResult, 6) + expr.substring(endIdx + 1);
     }
-
-    // 乗算、除算、累乗を先に処理する
     return evaluateAddSub(expr);
 }
 
@@ -68,17 +73,12 @@ float evaluateExpression(String expr) {
 float evaluateAddSub(String expr) {
     int idx = 0;
     float result = evaluateMulDivPow(expr, idx);
-    
     while (idx < expr.length()) {
         char op = expr.charAt(idx);
         if (op == '+' || op == '-') {
             idx++;
             float nextTerm = evaluateMulDivPow(expr, idx);
-            if (op == '+') {
-                result += nextTerm;
-            } else {
-                result -= nextTerm;
-            }
+            result = (op == '+') ? result + nextTerm : result - nextTerm;
         } else {
             idx++;
         }
@@ -89,23 +89,14 @@ float evaluateAddSub(String expr) {
 // 乗算、除算、累乗の評価
 float evaluateMulDivPow(String expr, int &idx) {
     float result = evaluateFactor(expr, idx);
-    
     while (idx < expr.length()) {
         char op = expr.charAt(idx);
         if (op == '*' || op == '/' || op == '^') {
             idx++;
             float nextFactor = evaluateFactor(expr, idx);
-            if (op == '*') {
-                result *= nextFactor;
-            } else if (op == '/') {
-                if (nextFactor == 0) {
-                    Serial.println(": error (divide by zero)");
-                    return NAN;
-                }
-                result /= nextFactor;
-            } else if (op == '^') {
-                result = pow(result, nextFactor);
-            }
+            if (op == '*') result *= nextFactor;
+            else if (op == '/') result /= nextFactor;
+            else if (op == '^') result = pow(result, nextFactor);
         } else {
             break;
         }
@@ -115,25 +106,17 @@ float evaluateMulDivPow(String expr, int &idx) {
 
 // 数値と関数の評価
 float evaluateFactor(String expr, int &idx) {
-    while (idx < expr.length() && expr.charAt(idx) == ' ') {
-        idx++; // 空白をスキップする
-    }
-
+    while (idx < expr.length() && expr.charAt(idx) == ' ') idx++;
     if (idx < expr.length() && (expr.charAt(idx) == '+' || expr.charAt(idx) == '-')) {
         char sign = expr.charAt(idx++);
         float result = evaluateFactor(expr, idx);
         return (sign == '-') ? -result : result;
     }
-
     if (idx < expr.length() && isDigit(expr.charAt(idx))) {
         int start = idx;
-        while (idx < expr.length() && (isDigit(expr.charAt(idx)) || expr.charAt(idx) == '.')) {
-            idx++;
-        }
+        while (idx < expr.length() && (isDigit(expr.charAt(idx)) || expr.charAt(idx) == '.')) idx++;
         return expr.substring(start, idx).toFloat();
     }
-
-    // 関数の評価
     if (idx < expr.length() - 3 && expr.substring(idx, idx + 3) == "sin") {
         idx += 3;
         return sin(evaluateFactor(expr, idx) * PI / 180.0);
@@ -147,24 +130,17 @@ float evaluateFactor(String expr, int &idx) {
         idx += 4;
         return sqrt(evaluateFactor(expr, idx));
     }
-
     return NAN;
-}
-
-// 文字が演算子かどうかをチェックする関数
-bool isOperator(char c) {
-    return (c == '+' || c == '-' || c == '*' || c == '/' || c == 's' || c == 'c' || c == 't' || c == 'r' || c == '^');
 }
 
 // 数式を数値積分する関数（台形法）
 float integrate(String input) {
-    // "i <function> <lower> <upper>" 形式を想定
     int firstSpace = input.indexOf(' ', 2); // "i "の次のスペースを見つける
     int secondSpace = input.indexOf(' ', firstSpace + 1);
 
     String function = input.substring(2, firstSpace);
     float lower = input.substring(firstSpace + 1, secondSpace).toFloat();
-    float upper = input.substring(secondSpace + 1, input.length() - 1).toFloat(); // 最後の "=" を無視
+    float upper = input.substring(secondSpace + 1).toFloat(); // "=" を無視
 
     const int n = 1000; // 分割数
     float h = (upper - lower) / n; // 区間の幅
@@ -198,4 +174,30 @@ float calculateLog(String input) {
     float value = input.substring(firstSpace + 1).toFloat(); // "=" を含むすべてを値として取得
 
     return log(value) / log(base); // 対数の変換公式を使用
+}
+
+// 分数形式を評価する関数
+float evaluateFraction(String input) {
+    int firstSpace = input.indexOf(' ', 2); // "b "の次のスペースを見つける
+    int secondSpace = input.indexOf(' ', firstSpace + 1);
+
+    float numerator = input.substring(2, firstSpace).toFloat();
+    float denominator = input.substring(firstSpace + 1, secondSpace).toFloat();
+
+    return numerator / denominator;
+}
+
+// 逆三角関数を評価する関数
+float evaluateInverseTrig(String input) {
+    String type = input.substring(0, 4); // "asin", "acos", "atan"
+    float value = input.substring(4).toFloat();
+
+    if (type == "asin") {
+        return asin(value) * 180.0 / PI; // ラジアンを度に変換
+    } else if (type == "acos") {
+        return acos(value) * 180.0 / PI; // ラジアンを度に変換
+    } else if (type == "atan") {
+        return atan(value) * 180.0 / PI; // ラジアンを度に変換
+    }
+    return NAN;
 }
