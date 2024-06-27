@@ -23,6 +23,16 @@ void loop() {
             Serial.print(" ");
             Serial.print(input.substring(input.indexOf(' ', 2) + 1));
             Serial.println(result, 2); // 結果を2桁の精度で表示
+        } else if (input.startsWith("b ")) {
+            float result = evaluateFraction(input);
+            Serial.print(input);
+            Serial.print(" = ");
+            Serial.println(result, 2); // 結果を2桁の精度で表示
+        } else if (input.startsWith("asin") || input.startsWith("acos") || input.startsWith("atan")) {
+            float result = evaluateInverseTrig(input);
+            Serial.print(input);
+            Serial.print(" = ");
+            Serial.println(result, 0); // 結果を整数で表示
         } else {
             float result = evaluateExpression(input);
             Serial.print(input);
@@ -36,6 +46,9 @@ String preprocessInput(String input) {
     input.replace("s", "sin");
     input.replace("c", "cos");
     input.replace("t", "tan");
+    input.replace("asin", "asin");
+    input.replace("acos", "acos");
+    input.replace("atan", "atan");
     input.replace("r", "sqrt");
     return input;
 }
@@ -161,4 +174,30 @@ float calculateLog(String input) {
     float value = input.substring(firstSpace + 1).toFloat(); // "=" を含むすべてを値として取得
 
     return log(value) / log(base); // 対数の変換公式を使用
+}
+
+// 分数形式を評価する関数
+float evaluateFraction(String input) {
+    int firstSpace = input.indexOf(' ', 2); // "b "の次のスペースを見つける
+    int secondSpace = input.indexOf(' ', firstSpace + 1);
+
+    float numerator = input.substring(2, firstSpace).toFloat();
+    float denominator = input.substring(firstSpace + 1, secondSpace).toFloat();
+
+    return numerator / denominator;
+}
+
+// 逆三角関数を評価する関数
+float evaluateInverseTrig(String input) {
+    String type = input.substring(0, 4); // "asin", "acos", "atan"
+    float value = input.substring(4).toFloat();
+
+    if (type == "asin") {
+        return asin(value) * 180.0 / PI; // ラジアンを度に変換
+    } else if (type == "acos") {
+        return acos(value) * 180.0 / PI; // ラジアンを度に変換
+    } else if (type == "atan") {
+        return atan(value) * 180.0 / PI; // ラジアンを度に変換
+    }
+    return NAN;
 }
