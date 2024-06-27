@@ -10,18 +10,30 @@ void loop() {
 
         String input = Serial.readStringUntil('\n'); // 改行までの文字列を読み込む
         input.trim(); // 先頭と末尾の空白を除去する
+        input = preprocessInput(input); // 入力を簡略化された形式に対応する
 
         if (input.startsWith("integrate")) {
             float result = integrate(input);
-            Serial.print("Integral Result: ");
-            Serial.println(result, 6); // 結果を6桁の精度で表示
+            Serial.print(input);
+            Serial.print(" = ");
+            Serial.println(result, 1); // 結果を6桁の精度で表示
         } else {
             // 通常の計算処理
             float result = evaluateExpression(input);
-            Serial.print("Result: ");
-            Serial.println(result, 6); // 結果を6桁の精度で表示
+            Serial.print(input);
+            Serial.print(" = ");
+            Serial.println(result, 1); // 結果を6桁の精度で表示
         }
     }
+}
+
+// 入力を簡略化された形式に対応する
+String preprocessInput(String input) {
+    input.replace("s", "sin");
+    input.replace("c", "cos");
+    input.replace("t", "tan");
+    input.replace("r", "sqrt");
+    return input;
 }
 
 // 数式の評価
@@ -39,20 +51,20 @@ float evaluateExpression(String expr) {
         expr = expr.substring(0, startIdx) + String(subResult, 6) + expr.substring(endIdx + 1);
     }
 
-    // 乗算と除算を先に処理する
+    // 乗算、除算、累乗を先に処理する
     return evaluateAddSub(expr);
 }
 
 // 足し算と引き算の評価
 float evaluateAddSub(String expr) {
     int idx = 0;
-    float result = evaluateMulDiv(expr, idx);
+    float result = evaluateMulDivPow(expr, idx);
     
     while (idx < expr.length()) {
         char op = expr.charAt(idx);
         if (op == '+' || op == '-') {
             idx++;
-            float nextTerm = evaluateMulDiv(expr, idx);
+            float nextTerm = evaluateMulDivPow(expr, idx);
             if (op == '+') {
                 result += nextTerm;
             } else {
@@ -65,23 +77,25 @@ float evaluateAddSub(String expr) {
     return result;
 }
 
-// 乗算と除算の評価
-float evaluateMulDiv(String expr, int &idx) {
+// 乗算、除算、累乗の評価
+float evaluateMulDivPow(String expr, int &idx) {
     float result = evaluateFactor(expr, idx);
     
     while (idx < expr.length()) {
         char op = expr.charAt(idx);
-        if (op == '*' || op == '/') {
+        if (op == '*' || op == '/' || op == '^') {
             idx++;
             float nextFactor = evaluateFactor(expr, idx);
             if (op == '*') {
                 result *= nextFactor;
-            } else {
+            } else if (op == '/') {
                 if (nextFactor == 0) {
                     Serial.println(": error (divide by zero)");
                     return NAN;
                 }
                 result /= nextFactor;
+            } else if (op == '^') {
+                result = pow(result, nextFactor);
             }
         } else {
             break;
@@ -123,12 +137,6 @@ float evaluateFactor(String expr, int &idx) {
     } else if (idx < expr.length() - 4 && expr.substring(idx, idx + 4) == "sqrt") {
         idx += 4;
         return sqrt(evaluateFactor(expr, idx));
-    } else if (idx < expr.length() - 3 && expr.substring(idx, idx + 3) == "pow") {
-        idx += 3;
-        int commaIdx = expr.indexOf(',', idx);
-        float base = evaluateFactor(expr.substring(idx, commaIdx), idx);
-        float exponent = evaluateFactor(expr.substring(commaIdx + 1), idx);
-        return pow(base, exponent);
     }
 
     return NAN;
