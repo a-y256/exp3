@@ -25,3 +25,23 @@ return
 ^7::
 Send, {_}
 return
+
+^8::
+Send, {+}
+return
+
+^9::
+Send, {-}
+return
+
+^0::
+Send, ×
+return
+
+^F1::
+Send,  {(}
+return
+
+^F3::
+Send,  {)}
+return

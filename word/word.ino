@@ -27,7 +27,7 @@ void translateIR() {
       break;
     case 0xFF629D: 
       Serial.println("VOL+"); 
-      addSymbolToDisplay('+');
+      addSymbolToDisplay(')');
       break;
     case 0xFF22DD: 
       Serial.println("FAST BACK"); 
@@ -55,7 +55,7 @@ void translateIR() {
       break;
     case 0xFF9867: 
       Serial.println("EQ"); 
-      addSymbolToDisplay('s');
+      addSymbolToDisplay('l');
       break;
     case 0xFFB04F: 
       Serial.println("ST/REPT"); 
@@ -106,32 +106,30 @@ void resetDisplay() {
 
 void calculateAndDisplayResult() {
   float result = 0;
-  if (enteredDigits[0] == 's' || enteredDigits[0] == 'c' || enteredDigits[0] == 't' || enteredDigits[0] == 'r' || enteredDigits[0] == 'b' || enteredDigits[0] == 'k') {
-    char func = enteredDigits[0];
-    float value = atof(enteredDigits + 1);
-    switch (func) {
-      case 's':
-        result = sin(value * PI / 180.0);
-        break;
-      case 'c':
-        result = cos(value * PI / 180.0);
-        break;
-      case 't':
-        result = tan(value * PI / 180.0);
-        break;
-      case 'r':
-        result = sqrt(value);
-        break;
-      case 'b':
-        result = evaluateFraction(enteredDigits);
-        break;
-      case 'k':
-        result = integrate(enteredDigits);
-        break;
-    }
-  } else {
+  String enteredString = String(enteredDigits);
+  String func = enteredString.substring(0, enteredString.indexOf(' '));
+
+  Serial.print("Function: ");
+  Serial.println(func);
+  Serial.print("Entered String: ");
+  Serial.println(enteredString);
+
+  if (func == "s") result = sin(parseValue(enteredString) * PI / 180.0);
+  else if (func == "c") result = cos(parseValue(enteredString) * PI / 180.0);
+  else if (func == "t") result = tan(parseValue(enteredString) * PI / 180.0);
+  else if (func == "r") result = sqrt(parseValue(enteredString));
+  else if (func == "b") result = evaluateFraction(enteredString);
+  else if (func == "k") result = integrate(enteredString);
+  else if (func == "l") {
+    Serial.println("Calling calculateLog function");
+    result = calculateLog(enteredString);
+  }
+  else if (func == "asin") result = evaluateInverseTrig(enteredString);
+  else if (func == "acos") result = evaluateInverseTrig(enteredString);
+  else if (func == "atan") result = evaluateInverseTrig(enteredString);
+  else {
     // 数式の評価
-    result = evaluateExpression(enteredDigits);
+    result = evaluateExpression(enteredString);
   }
 
   // 結果をLCDに表示
@@ -152,6 +150,11 @@ void calculateAndDisplayResult() {
   lastResult = result;
 }
 
+float parseValue(String input) {
+  int firstSpace = input.indexOf(' ');
+  return input.substring(firstSpace + 1).toFloat();
+}
+
 void sendEquationToPC() {
   // Shift + 2
   Keyboard.press(KEY_LEFT_CTRL);
@@ -165,9 +168,33 @@ void sendEquationToPC() {
     if (c == 'w') {
       Keyboard.print("/");
     } else if (c == '^') {
-      // シフトキーと一緒に5を押して^を送信
       Keyboard.press(KEY_LEFT_CTRL);
       Keyboard.press('5');
+      delay(400);
+      Keyboard.releaseAll();
+     }else if (c == '+') {
+      Keyboard.press(KEY_LEFT_CTRL);
+      Keyboard.press('8');
+      delay(400);
+      Keyboard.releaseAll();
+    }else if (c == '-') {
+      Keyboard.press(KEY_LEFT_CTRL);
+      Keyboard.press('9');
+      delay(400);
+      Keyboard.releaseAll();
+    }else if (c == '*') {
+      Keyboard.press(KEY_LEFT_CTRL);
+      Keyboard.press('0');
+      delay(400);
+      Keyboard.releaseAll();
+    }else if (c == '(') {
+      Keyboard.press(KEY_LEFT_CTRL);
+      Keyboard.press(KEY_F1);
+      delay(400);
+      Keyboard.releaseAll();
+    }else if (c == ')') {
+      Keyboard.press(KEY_LEFT_CTRL);
+      Keyboard.press(KEY_F3);
       delay(400);
       Keyboard.releaseAll();
     } else if (c == 'r') {
@@ -184,6 +211,168 @@ void sendEquationToPC() {
       Keyboard.releaseAll();
       Keyboard.print("sin ");
       delay(400);
+      Keyboard.press(KEY_LEFT_CTRL);
+      Keyboard.press('3');
+      delay(400);
+      Keyboard.releaseAll();
+      i++;
+      i++;
+      while (i < strlen(enteredDigits) && (isDigit(enteredDigits[i]) || enteredDigits[i] == '.')) {
+            Keyboard.print(enteredDigits[i]);
+            i++;
+        }
+      
+      Keyboard.press(KEY_LEFT_CTRL);
+      Keyboard.press('4');
+      delay(400);
+      Keyboard.releaseAll();
+    } else if (c == 'q') {
+      Keyboard.press(KEY_LEFT_CTRL);
+      Keyboard.press('2');
+      delay(400);
+      Keyboard.releaseAll();
+      Keyboard.print("sin ");
+      delay(400);
+      Keyboard.press(KEY_LEFT_CTRL);
+      Keyboard.press('5');
+      delay(400);
+      Keyboard.releaseAll();
+      Keyboard.press(KEY_LEFT_CTRL);
+      Keyboard.press('3');
+      delay(400);
+      Keyboard.releaseAll();
+      Keyboard.print("-1");
+      Keyboard.press(KEY_LEFT_CTRL);
+      Keyboard.press('4');
+      delay(400);
+      Keyboard.releaseAll();
+      Keyboard.press(KEY_LEFT_CTRL);
+      Keyboard.press('3');
+      delay(400);
+      Keyboard.releaseAll();
+      i++;
+      i++;
+      while (i < strlen(enteredDigits) && (isDigit(enteredDigits[i]) || enteredDigits[i] == '.')) {
+            Keyboard.print(enteredDigits[i]);
+            i++;
+        }
+      
+      Keyboard.press(KEY_LEFT_CTRL);
+      Keyboard.press('4');
+      delay(400);
+      Keyboard.releaseAll();
+    } else if (c == 'c') {
+      Keyboard.press(KEY_LEFT_CTRL);
+      Keyboard.press('2');
+      delay(400);
+      Keyboard.releaseAll();
+      Keyboard.print("cos ");
+      delay(400);
+      Keyboard.press(KEY_LEFT_CTRL);
+      Keyboard.press('3');
+      delay(400);
+      Keyboard.releaseAll();
+      i++;
+      i++;
+      while (i < strlen(enteredDigits) && (isDigit(enteredDigits[i]) || enteredDigits[i] == '.')) {
+            Keyboard.print(enteredDigits[i]);
+            i++;
+        }
+      Keyboard.press(KEY_LEFT_CTRL);
+      Keyboard.press('4');
+      delay(400);
+      Keyboard.releaseAll();
+     } else if (c == 'q') {
+      Keyboard.press(KEY_LEFT_CTRL);
+      Keyboard.press('2');
+      delay(400);
+      Keyboard.releaseAll();
+      Keyboard.print("cos ");
+      delay(400);
+      Keyboard.press(KEY_LEFT_CTRL);
+      Keyboard.press('5');
+      delay(400);
+      Keyboard.releaseAll();
+      Keyboard.press(KEY_LEFT_CTRL);
+      Keyboard.press('3');
+      delay(400);
+      Keyboard.releaseAll();
+      Keyboard.print("-1");
+      Keyboard.press(KEY_LEFT_CTRL);
+      Keyboard.press('4');
+      delay(400);
+      Keyboard.releaseAll();
+      Keyboard.press(KEY_LEFT_CTRL);
+      Keyboard.press('3');
+      delay(400);
+      Keyboard.releaseAll();
+      i++;
+      i++;
+      while (i < strlen(enteredDigits) && (isDigit(enteredDigits[i]) || enteredDigits[i] == '.')) {
+            Keyboard.print(enteredDigits[i]);
+            i++;
+        }
+      
+      Keyboard.press(KEY_LEFT_CTRL);
+      Keyboard.press('4');
+      delay(400);
+      Keyboard.releaseAll();
+    } else if (c == 't') {
+      Keyboard.press(KEY_LEFT_CTRL);
+      Keyboard.press('2');
+      delay(400);
+      Keyboard.releaseAll();
+      Keyboard.print("tan ");
+      delay(400);
+      Keyboard.press(KEY_LEFT_CTRL);
+      Keyboard.press('3');
+      delay(400);
+      Keyboard.releaseAll();
+      i++;
+      i++;
+      while (i < strlen(enteredDigits) && (isDigit(enteredDigits[i]) || enteredDigits[i] == '.')) {
+            Keyboard.print(enteredDigits[i]);
+            i++;
+        }
+      Keyboard.press(KEY_LEFT_CTRL);
+      Keyboard.press('4');
+      delay(400);
+      Keyboard.releaseAll();
+    } else if (c == 'q') {
+      Keyboard.press(KEY_LEFT_CTRL);
+      Keyboard.press('2');
+      delay(400);
+      Keyboard.releaseAll();
+      Keyboard.print("tan ");
+      delay(400);
+      Keyboard.press(KEY_LEFT_CTRL);
+      Keyboard.press('5');
+      delay(400);
+      Keyboard.releaseAll();
+      Keyboard.press(KEY_LEFT_CTRL);
+      Keyboard.press('3');
+      delay(400);
+      Keyboard.releaseAll();
+      Keyboard.print("-1");
+      Keyboard.press(KEY_LEFT_CTRL);
+      Keyboard.press('4');
+      delay(400);
+      Keyboard.releaseAll();
+      Keyboard.press(KEY_LEFT_CTRL);
+      Keyboard.press('3');
+      delay(400);
+      Keyboard.releaseAll();
+      i++;
+      i++;
+      while (i < strlen(enteredDigits) && (isDigit(enteredDigits[i]) || enteredDigits[i] == '.')) {
+            Keyboard.print(enteredDigits[i]);
+            i++;
+        }
+      
+      Keyboard.press(KEY_LEFT_CTRL);
+      Keyboard.press('4');
+      delay(400);
+      Keyboard.releaseAll();
     } else if (c == 'b') {
       Keyboard.press(KEY_LEFT_CTRL);
       Keyboard.press('2');
@@ -225,6 +414,44 @@ void sendEquationToPC() {
       delay(400);
       Keyboard.releaseAll();
       continue; // ループの残りをスキップして次に進む
+      } else if (c == 'l') { //log対応
+      Keyboard.press(KEY_LEFT_CTRL);
+      Keyboard.press('2');
+      delay(400);
+      Keyboard.releaseAll();
+      delay(500);
+      Keyboard.print("log");
+      Keyboard.press(KEY_LEFT_CTRL);
+      Keyboard.press('7');
+      delay(400);
+      Keyboard.releaseAll();
+      i++; // 'l'の次の文字に進む
+      while (enteredDigits[i] == ' ') { // スペースを飛ばす
+        i++;
+      }
+      // 底を取得
+      while (i < strlen(enteredDigits) && (isDigit(enteredDigits[i]) || enteredDigits[i] == '.')) {
+        Keyboard.print(enteredDigits[i]);
+        i++;
+      }
+      while (enteredDigits[i] == ' ') { // 真数の前のスペースを飛ばす
+        i++;
+      }
+      Keyboard.press(KEY_LEFT_CTRL);
+      Keyboard.press('3');
+      delay(400);
+      Keyboard.releaseAll();
+      // 真数を取得
+      while (i < strlen(enteredDigits) && (isDigit(enteredDigits[i]) || enteredDigits[i] == '.')) {
+        Keyboard.print(enteredDigits[i]);
+        i++;
+      }
+      Keyboard.press(KEY_LEFT_CTRL);
+      Keyboard.press('4');
+      delay(400);
+      Keyboard.releaseAll();
+      continue; // ループの残りをスキップして次に進む
+      
        } else if (c == 'k') { //積分処理
             Keyboard.press(KEY_LEFT_CTRL);
             Keyboard.press('2');
@@ -287,6 +514,31 @@ void sendEquationToPC() {
             continue; // ループの残りをスキップして次に進む
           } else if (c == ' ') {
             Keyboard.print(' ');
+          } else if (strncmp(enteredDigits + i, "asin", 4) == 0 || strncmp(enteredDigits + i, "acos", 4) == 0 || strncmp(enteredDigits + i, "atan", 4) == 0) {
+            char trigFunc[5];
+            strncpy(trigFunc, enteredDigits + i, 4);
+            trigFunc[4] = '\0';
+            i += 4;
+            Keyboard.press(KEY_LEFT_CTRL);
+            Keyboard.press('2');
+            delay(400);
+            Keyboard.releaseAll();
+            Keyboard.print(trigFunc);
+            Keyboard.print(" ");
+            delay(400);
+            Keyboard.press(KEY_LEFT_CTRL);
+            Keyboard.press('3');
+            delay(400);
+            Keyboard.releaseAll();
+            while (i < strlen(enteredDigits) && (isDigit(enteredDigits[i]) || enteredDigits[i] == '.')) {
+              Keyboard.print(enteredDigits[i]);
+              i++;
+            }
+            Keyboard.press(KEY_LEFT_CTRL);
+            Keyboard.press('4');
+            delay(400);
+            Keyboard.releaseAll();
+            continue; // ループの残りをスキップして次に進む
           } else {
             Keyboard.print(c);
           }
@@ -408,6 +660,8 @@ float evaluateFactor(String expr, int &idx) {
     return sqrt(evaluateFactor(expr, idx));
   } else if (expr.charAt(idx) == 'b') {
     return evaluateFraction(expr);
+  } else if (expr.substring(idx, idx + 4) == "asin" || expr.substring(idx, idx + 4) == "acos" || expr.substring(idx, idx + 4) == "atan") {
+    return evaluateInverseTrig(expr.substring(idx));
   }
   return NAN;
 }
@@ -457,11 +711,18 @@ float evaluateFunctionAtX(String function, float x) {
 
 // 対数の計算
 float calculateLog(String input) {
-  int firstSpace = input.indexOf(' ', 2); // "l "の次のスペースを見つける
+  int firstSpace = input.indexOf(' ', 2); // "b "の次のスペースを見つける
   int secondSpace = input.indexOf(' ', firstSpace + 1);
 
   float base = input.substring(2, firstSpace).toFloat();
-  float value = input.substring(firstSpace + 1).toFloat(); // "=" を含むすべてを値として取得
+  float value = input.substring(firstSpace + 1).toFloat();
+
+
+  // デバッグメッセージを追加
+  Serial.print("Base: ");
+  Serial.println(base);
+  Serial.print("Value: ");
+  Serial.println(value);
 
   return log(value) / log(base); // 対数の変換公式を使用
 }
