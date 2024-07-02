@@ -42,27 +42,37 @@ static const TLcdPinAssignTable PinAssignTable = {
   
 PROGMEM const uint8_t UserChars[][5] = {
   { // 80
-    s  _ M _ _ _ _ _ _,
-    s  M _ _ _ _ _ _ _,
-    s  _ M M M M M M _,
+    s  _ _ _ _ _ _ _ _,
+    s  _ _ _ _ _ _ _ _,
+    s  M M M M M M M _,
     s  _ _ _ _ _ _ _ M,
     s  _ _ _ _ _ _ M _
   },
   { // 81
+    s  _ _ _ _ _ _ _ _,
+    s  _ _ _ _ _ _ _ _,
+    s  M M M M M M M M,
+    s  _ _ _ _ _ _ _ _,
+    s  _ _ _ _ _ _ _ _
+  },
+  { // 82
+    s  _ M _ _ _ _ _ _,
+    s  M _ _ _ _ _ _ _,
+    s  _ M M M M M M M,
+    s  _ _ _ _ _ _ _ _,
+    s  _ _ _ _ _ _ _ _
+  },
+  { // 83
+    s  _ _ M _ _ _ _ _,
     s  _ _ M _ _ _ _ _,
     s  _ M _ _ _ _ _ _,
     s  M M M M M M M M,
-    s  _ _ _ _ _ _ _ M,
-    s  _ _ _ _ _ _ _ M
-  },
-  { // 82
-    s  _ _ _ _ _ _ _ _,
-    s  _ M _ _ _ _ _ _,
-    s  _ M _ _ _ _ _ _,
-    s  M _ _ _ _ _ _ _,
-    s  _ M M M M M M M
+    s  _ _ _ _ _ _ _ _
   },
 };
+
+int x;
+int y;
 
 #undef s
 #undef M
@@ -75,6 +85,8 @@ void setup() {
 
   while (MGLCD.Reset()); //LCDの初期化
   MGLCD.UserChars(UserChars, sizeof(UserChars) / 5);
+  char str[40];
+  MGLCD.Locate(0,1);
 
 }
 
@@ -94,13 +106,86 @@ void loop() {
   if (key >= 0) {
     char pressedKey = keys[key];
     Serial.println(pressedKey); // もし何かキーが押されていたら、対応する文字をシリアル出力
+    x = MGLCD.GetX();
+    y = MGLCD.GetY(); // 次に表示する文字の座標を取得する
 
-    // Check if the key is 'i' (or any key you want to map to the symbols)
+    // 数字の入力
+    if (pressedKey == '0') {
+      MGLCD.print("0"); // Print the custom symbol corresponding to 'i'
+    }
+    if (pressedKey == '1') {
+      MGLCD.print("1"); // Print the custom symbol corresponding to 'i'
+    }
+    if (pressedKey == '2') {
+      MGLCD.print("2"); // Print the custom symbol corresponding to 'i'
+    }
+    if (pressedKey == '3') {
+      MGLCD.print("3"); // Print the custom symbol corresponding to 'i'
+    }
+    if (pressedKey == '4') {
+      MGLCD.print("4"); // Print the custom symbol corresponding to 'i'
+    }
+    if (pressedKey == '5') {
+      MGLCD.print("5"); // Print the custom symbol corresponding to 'i'
+    }
+    if (pressedKey == '6') {
+      MGLCD.print("6"); // Print the custom symbol corresponding to 'i'
+    }
+    if (pressedKey == '7') {
+      MGLCD.print("7"); // Print the custom symbol corresponding to 'i'
+    }
+    if (pressedKey == '8') {
+      MGLCD.print("8"); // Print the custom symbol corresponding to 'i'
+    }
+    if (pressedKey == '9') {
+      MGLCD.print("9"); // Print the custom symbol corresponding to 'i'
+    }
+
+    // 四則演算
+    if (pressedKey == '+') {
+      MGLCD.print("+"); // Print the custom symbol corresponding to 'i'
+    }
+    if (pressedKey == '-') {
+      MGLCD.print("-"); // Print the custom symbol corresponding to 'i'
+    }
+    if (pressedKey == '*') {
+      MGLCD.print("9"); // Print the custom symbol corresponding to 'i'
+    }
+    
+    // すべて消す
+    if (pressedKey == 'A') {
+      MGLCD.Reset();
+    }
+    // 一文字消す
+    if (pressedKey == 'D'){
+      MGLCD.Locate(x-1,y-1);
+      MGLCD.print(" ");
+      MGLCD.Locate(x-1,y+1);
+      MGLCD.print(" ");
+      MGLCD.Locate(x-1,y);
+      MGLCD.print(" ");
+      x = MGLCD.GetX();
+      y = MGLCD.GetY();
+      MGLCD.Locate(x-1,y);
+    }
+
+    // 積分
     if (pressedKey == 'k') {
-      MGLCD.print("\x80"); // Print the custom symbol corresponding to 'i'
+      MGLCD.print("\x81");
+      MGLCD.Locate(x,y-1);
+      MGLCD.print("\x80 b");
+      MGLCD.Locate(x,y+1);
+      MGLCD.print("\x82 a");
+      x = MGLCD.GetX();
+      y = MGLCD.GetY();
+      MGLCD.Locate(x+1,y-1);
+      MGLCD.print("dx");
     }
+
+    // 平方根
     if (pressedKey == 'r') {
-      MGLCD.print("\x81"); // Print the custom symbol corresponding to 'i'
+      MGLCD.print("\x83"); // Print the custom symbol corresponding to 'i'
     }
+    
   }
 }
