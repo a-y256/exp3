@@ -80,14 +80,24 @@ int y;
 
 static mglcd_SG12864 MGLCD(PinAssignTable);
 
+const int maxDigits = 16; // 最大表示桁数
+char enteredDigits[maxDigits + 1] = ""; // 入力された数値を保存する配列
+
 void setup() {
   Serial.begin(9600);
 
   while (MGLCD.Reset()); //LCDの初期化
   MGLCD.UserChars(UserChars, sizeof(UserChars) / 5);
-  char str[40];
-  MGLCD.Locate(0,1);
+}
 
+void addDigitToDisplay(char digit) {
+    int length = strlen(enteredDigits);
+    if (length < maxDigits) {
+        enteredDigits[length] = digit;
+        enteredDigits[length + 1] = '\0';
+        MGLCD.Locate(0, 1);
+        MGLCD.print(enteredDigits);
+    }
 }
 
 void loop() {
@@ -99,77 +109,24 @@ void loop() {
     if (key >= 0) key += 16; // keypad2のキーが押されていたら、keyに16を足す
   } // if
 
-  // この時点で、keypad1のキーが押されていた場合は、keyの値は0～15になっており、
-  // keypad1のキーが押されておらず、keypad2のキーが押されていた場合は、keyの値は16～31になっており、
-  // キーが全く押されていない場合はkeyの値は-1になっている。
-
   if (key >= 0) {
     char pressedKey = keys[key];
     Serial.println(pressedKey); // もし何かキーが押されていたら、対応する文字をシリアル出力
-    x = MGLCD.GetX();
-    y = MGLCD.GetY(); // 次に表示する文字の座標を取得する
+    addDigitToDisplay(pressedKey);
 
-    // 数字の入力
-    if (pressedKey == '0') {
-      MGLCD.print("0"); // Print the custom symbol corresponding to 'i'
-    }
-    if (pressedKey == '1') {
-      MGLCD.print("1"); // Print the custom symbol corresponding to 'i'
-    }
-    if (pressedKey == '2') {
-      MGLCD.print("2"); // Print the custom symbol corresponding to 'i'
-    }
-    if (pressedKey == '3') {
-      MGLCD.print("3"); // Print the custom symbol corresponding to 'i'
-    }
-    if (pressedKey == '4') {
-      MGLCD.print("4"); // Print the custom symbol corresponding to 'i'
-    }
-    if (pressedKey == '5') {
-      MGLCD.print("5"); // Print the custom symbol corresponding to 'i'
-    }
-    if (pressedKey == '6') {
-      MGLCD.print("6"); // Print the custom symbol corresponding to 'i'
-    }
-    if (pressedKey == '7') {
-      MGLCD.print("7"); // Print the custom symbol corresponding to 'i'
-    }
-    if (pressedKey == '8') {
-      MGLCD.print("8"); // Print the custom symbol corresponding to 'i'
-    }
-    if (pressedKey == '9') {
-      MGLCD.print("9"); // Print the custom symbol corresponding to 'i'
-    }
-
-    // 四則演算
-    if (pressedKey == '+') {
-      MGLCD.print("+"); // Print the custom symbol corresponding to 'i'
-    }
-    if (pressedKey == '-') {
-      MGLCD.print("-"); // Print the custom symbol corresponding to 'i'
-    }
-    if (pressedKey == '*') {
-      MGLCD.print("9"); // Print the custom symbol corresponding to 'i'
-    }
-    
-    // すべて消す
+    // 特殊機能の処理
     if (pressedKey == 'A') {
       MGLCD.Reset();
+      memset(enteredDigits, 0, sizeof(enteredDigits)); // 入力された数値をリセット
     }
-    // 一文字消す
     if (pressedKey == 'D'){
-      MGLCD.Locate(x-1,y-1);
-      MGLCD.print(" ");
-      MGLCD.Locate(x-1,y+1);
-      MGLCD.print(" ");
-      MGLCD.Locate(x-1,y);
-      MGLCD.print(" ");
-      x = MGLCD.GetX();
-      y = MGLCD.GetY();
-      MGLCD.Locate(x-1,y);
+      int length = strlen(enteredDigits);
+      if (length > 0) {
+        enteredDigits[length - 1] = '\0';
+        MGLCD.Locate(0, 1);
+        MGLCD.print(enteredDigits);
+      }
     }
-
-    // 積分
     if (pressedKey == 'k') {
       MGLCD.print("\x81");
       MGLCD.Locate(x,y-1);
@@ -181,11 +138,8 @@ void loop() {
       MGLCD.Locate(x+1,y-1);
       MGLCD.print("dx");
     }
-
-    // 平方根
     if (pressedKey == 'r') {
       MGLCD.print("\x83"); // Print the custom symbol corresponding to 'i'
     }
-    
   }
 }
