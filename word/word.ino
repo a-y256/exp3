@@ -2,6 +2,7 @@
 #include <IRremote.h>
 #include <HID-Project.h>
 #include <math.h>
+//
 
 void pressCtrlAndKey(char key) {
     Keyboard.press(KEY_LEFT_CTRL);
@@ -19,7 +20,7 @@ void pressKey(char key) {
 // LCDの初期化
 LiquidCrystal lcd(7, 8, 9, 10, 11, 12);
 
-int j = 0;
+
 // IR受信機
 int receiver = 3; // IR受信機の信号ピンをArduinoのデジタルピン3に接続
 IRrecv irrecv(receiver); // 'irrecv'のインスタンスを作成
@@ -264,11 +265,12 @@ void sendEquationToPC() {
             pressCtrlAndKey('2');
             delay(500);
             Keyboard.print("log");
-            pressKey('7');
+            pressCtrlAndKey('7');
             i++; // 'l'の次の文字に進む
             while (enteredDigits[i] == ' ') { // スペースを飛ばす
                 i++;
             }
+            pressCtrlAndKey('3'); 
             // 底を取得
             while (i < strlen(enteredDigits) && (isDigit(enteredDigits[i]) || enteredDigits[i] == '.')) {
                 Keyboard.print(enteredDigits[i]);
@@ -277,13 +279,8 @@ void sendEquationToPC() {
             while (enteredDigits[i] == ' ') { // 真数の前のスペースを飛ばす
                 i++;
             }
-            pressCtrlAndKey('3'); // {
-            // 真数を取得
-            while (i < strlen(enteredDigits) && (isDigit(enteredDigits[i]) || enteredDigits[i] == '.')) {
-                Keyboard.print(enteredDigits[i]);
-                i++;
-            }
-            pressCtrlAndKey('4'); // }
+            pressCtrlAndKey('4');
+            String enteredDigitsStr = enteredDigits; handleSubFunction2(i, enteredDigitsStr);
             continue; // ループの残りをスキップして次に進む
 
         } else if (c == 'k') { //積分処理
@@ -291,23 +288,32 @@ void sendEquationToPC() {
             delay(700);
             Keyboard.print("int");
             pressCtrlAndKey('7');
-            delay(400);
-            pressCtrlAndKey('3');
-            i++; // 'k'の次の文字に進む
-            while (enteredDigits[i] == ' ') { // スペースを飛ばす
-                i++;
-                i++;
-                i++;
-            }
+
+            Serial.println(enteredDigits);
+            int totalCount = countTotalCharacters(enteredDigits);
+            i=totalCount-1;
+            Serial.print("Total count of digits, letters, and spaces: ");
+            Serial.println(totalCount);
             while (i < strlen(enteredDigits) && (isDigit(enteredDigits[i]) || enteredDigits[i] == '.')) {
+                i--;
+                
+            }
+
+            i-=1;
+            while (i < strlen(enteredDigits) && (isDigit(enteredDigits[i]) || enteredDigits[i] == '.')) { 
+                i--;
+            }
+         
+            int upperCount =i;
+            pressCtrlAndKey('3');
+            i++; // 'k'の下限の位置へ
+                        while (i < strlen(enteredDigits) && (isDigit(enteredDigits[i]) || enteredDigits[i] == '.')) {
                 Keyboard.print(enteredDigits[i]);
                 i++;
             }
             pressCtrlAndKey('4');
-            // シフトキーと一緒に5を押して^を送信
             pressCtrlAndKey('5');
             pressCtrlAndKey('3');
-
             // 上限を取得
             while (enteredDigits[i] == ' ') { // スペースを飛ばす
                 i++;
@@ -317,13 +323,14 @@ void sendEquationToPC() {
                 i++;
             }
             pressCtrlAndKey('4');
-
-            for (int k = 2; enteredDigits[k] != '\0' && enteredDigits[k] != ' '; j++) {
-                
-                Keyboard.print(enteredDigits[k]);
+            i = 0;
+            char destination[maxDigits + 1] = "";
+            for (int k = 0; k <= upperCount; k++) {
+            destination[k] = enteredDigits[k];
             }
-
+            String destinationsStr = destination; handleSubFunction1(i,destinationsStr);
             Keyboard.print("dx");
+            i = totalCount;
             continue; // ループの残りをスキップして次に進む
         } else if (c == ' ') {
             Keyboard.print(' ');
@@ -353,13 +360,22 @@ void sendEquationToPC() {
     delay(100);
     Keyboard.releaseAll(); // 少しの間押し続ける
     Keyboard.print(lastResult);
-    Serial.println("FUNC/STOP");
 
     // エンターキーを送信
     Keyboard.write(KEY_RETURN);
 
     // 入力内容をリセット
     //resetDisplay();
+}
+
+int countTotalCharacters(const char* enteredDigits) {
+    int totalCount = 0;
+    for (int i = 0; enteredDigits[i] != '\0'; i++) {
+        if (isdigit(enteredDigits[i]) || isalpha(enteredDigits[i]) || isspace(enteredDigits[i])) {
+            totalCount++;
+        }
+    }
+    return totalCount;
 }
 
 void handleSubFunction1(int &index, String &function) {
@@ -369,7 +385,7 @@ void handleSubFunction1(int &index, String &function) {
         String subFunction = extractFunction(index);
         sendFunctionToPC(subFunction);
     } else {
-        while (index < function.length() && (isDigit(function[index]) || function[index] == '.')) {
+        while (index < function.length() && (isDigit(function[index]) || function[index] == '.' || function[index] == 'x')) {
             Keyboard.print(function[index]);
             index++;
         }
@@ -383,9 +399,7 @@ void handleSubFunction1(int &index, String &function) {
 }
 
 void handleSubFunction2(int &index, String &function) {
-    pressCtrlAndKey('3');
-    Serial.print("デバック:");
-    
+    pressCtrlAndKey('3'); 
     Serial.println(function[index]);
     if (isFunction(function[index])) {
         String subFunction = extractFunction(index);
@@ -393,7 +407,7 @@ void handleSubFunction2(int &index, String &function) {
         index++;
       
     } else {
-        while (index < function.length() && (isDigit(function[index]) || function[index] == '.')) {
+        while (index < function.length() && (isDigit(function[index]) || function[index] == '.'|| function[index] == 'x')) {
             Keyboard.print(function[index]);
             index++;
         }
@@ -405,6 +419,9 @@ void handleSubFunction2(int &index, String &function) {
     }
     pressCtrlAndKey('4');
 }
+
+
+
 
 // 組み合わせ用
 bool isOperator(char c) {
@@ -591,15 +608,24 @@ bool isFunction(char c) {
 // 新しい関数: サブ関数の抽出
 String extractFunction(int &index) {
     String func;
-    // 関数名の抽出
-    while (index < strlen(enteredDigits) && enteredDigits[index] != ' ') {
+    // 関数名の抽出 (^ と r を含む)
+    while (index < strlen(enteredDigits) && enteredDigits[index] != ' ' && enteredDigits[index] != '^' && enteredDigits[index] != 'r') {
         func += enteredDigits[index];
+        index++;
+    }
+    // "^" と "r" も関数名に含める
+    if (index < strlen(enteredDigits) && (enteredDigits[index] == '^' || enteredDigits[index] == 'r')) {
+        func += enteredDigits[index];
+        index++;
+    }
+    // スペースをスキップ
+    while (index < strlen(enteredDigits) && enteredDigits[index] == ' ') {
         index++;
     }
 
 
     // 引数の抽出
-    while (index < strlen(enteredDigits) && (isDigit(enteredDigits[index]) || enteredDigits[index] == '.' )) {
+    while (index < strlen(enteredDigits) && (isDigit(enteredDigits[index]) || enteredDigits[index] == '.' || enteredDigits[index] == 'x')) {
         func += enteredDigits[index];
         index++;
     }
@@ -666,7 +692,7 @@ void sendFunctionToPC(String function) {
                 j++;
             }
             // 分子を取得
-            while (j < function.length() && (isDigit(function[j]) || function[j] == '.')) {
+            while (j < function.length() && (isDigit(function[j]) || function[j] == '.'|| function[j] == 'x')) {
                 Keyboard.print(function[j]);
                 j++;
             }
@@ -676,7 +702,7 @@ void sendFunctionToPC(String function) {
             }
             pressCtrlAndKey('3'); // {
             // 分母を取得
-            while (j < function.length() && (isDigit(function[j]) || function[j] == '.')) {
+            while (j < function.length() && (isDigit(function[j]) || function[j] == '.'|| function[j] == 'x')) {
                 Keyboard.print(function[j]);
                 j++;
             }

@@ -1,4 +1,4 @@
-﻿^1::
+^1::
 Send, !+-
 return
 
@@ -45,3 +45,10 @@ return
 ^F3::
 Send,  {)}
 return
+
+
+^F7::
+Send, int_
+return
+
+
