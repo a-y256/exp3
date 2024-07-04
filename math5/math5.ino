@@ -15,6 +15,7 @@ void loop() {
         if (input.startsWith("i ")) {
             float result = integrate(input);
             Serial.print(input);
+            Serial.println(" = ");
             Serial.println(result, 2); // 結果を2桁の精度で表示
         } else if (input.startsWith("l ")) {
             float result = calculateLog(input);
@@ -138,9 +139,9 @@ float integrate(String input) {
     int firstSpace = input.indexOf(' ', 2); // "i "の次のスペースを見つける
     int secondSpace = input.indexOf(' ', firstSpace + 1);
 
-    String function = input.substring(2, firstSpace);
-    float lower = input.substring(firstSpace + 1, secondSpace).toFloat();
-    float upper = input.substring(secondSpace + 1).toFloat(); // "=" を無視
+    float lower = input.substring(2, firstSpace).toFloat();
+    float upper = input.substring(firstSpace + 1, secondSpace).toFloat();
+    String function = input.substring(secondSpace + 1); // "=" を無視
 
     const int n = 1000; // 分割数
     float h = (upper - lower) / n; // 区間の幅
