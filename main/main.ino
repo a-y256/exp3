@@ -1,15 +1,14 @@
 #include <ResKeypad.h>
 #include <mglcd.h>
 #include <Arduino.h>
+#include <HID-Project.h>
 #include <math.h>
 
 // A0につながっているキーパッドをkeypad1とする
 ResKeypad keypad1(A4, 16, RESKEYPAD_4X4, RESKEYPAD_4X4_SIDE_A); // SIDE Aに部品を実装した場合はこの行を有効にする
-//ResKeypad keypad1(A8, 16, RESKEYPAD_4X4, RESKEYPAD_4X4_SIDE_B); // SIDE Bに部品を実装した場合はこの行を有効にする
 
 // A1につながっているキーパッドをkeypad2とする
 ResKeypad keypad2(A5, 16, RESKEYPAD_4X4, RESKEYPAD_4X4_SIDE_A); // SIDE Aに部品を実装した場合はこの行を有効にする
-//ResKeypad keypad2(A9, 16, RESKEYPAD_4X4, RESKEYPAD_4X4_SIDE_B); // SIDE Bに部品を実装した場合はこの行を有効にする
 
 char keys[] = {
   '*', '-', '+', '0',
@@ -71,19 +70,33 @@ PROGMEM const uint8_t UserChars[][5] = {
     s  M M M M M M M M,
     s  _ _ _ _ _ _ _ _
   },
-  
+  { // 84
+    s  M _ _ _ _ _ _ _,
+    s  M _ _ _ _ _ _ _,
+    s  M _ _ _ _ _ _ _,
+    s  M _ _ _ _ _ _ _,
+    s  M _ _ _ _ _ _ _
+  },
+  { // 85
+    s  _ _ _ M _ _ _ _,
+    s  _ _ _ M _ _ _ _,
+    s  _ _ _ M _ _ _ _,
+    s  _ _ _ M _ _ _ _,
+    s  _ _ _ M _ _ _ _
+  }
 };
 
 int x;
 int y;
 int i = 1;
 int n = 0;
+int m = 0;
 int xa;
 int ya;
 int xb;
 int yb;
 String func = "";
-
+float lastResult = 0;
 #undef s
 #undef M
 #undef _
@@ -145,33 +158,50 @@ float evaluateInverseTrig(String input);
 // 計算結果を表示する関数
 void displayResult(float result) {
     char resultStr[17];
-    Serial.println(resultStr);
-    dtostrf(result, 0, 2, resultStr); // 結果を文字列に変換
-    MGLCD.Locate(100, 100); // LCDの2行目に移動
+    dtostrf(result, 0, 2, resultStr); 
+    MGLCD.Locate(strlen(enteredDigits) , 1); 
     MGLCD.print("=");
     MGLCD.print(resultStr);
 }
 
 void loop() {
-  signed char key; // キーパッドから読み取ったキー番号(キーパッド1とキーパッド2で共用)
+  signed char key; // キー番号
 
-  key = keypad1.GetKey(); // keypad1からキー番号を読み取る。キーが押されていないならkey=-1
+  key = keypad1.GetKey(); 
   if (key < 0) { // keypad1のキーが押されていなかった場合
-    key = keypad2.GetKey(); // keypad2からキー番号を読み取る。キーが押されていないならkey=-1
-    if (key >= 0) key += 16; // keypad2のキーが押されていたら、keyに16を足す
+    key = keypad2.GetKey(); // 
+    if (key >= 0) key += 16; // 
   } // if
 
   if (key >= 0) {
     pressedKey = keys[key];
+
+    // "="が押されたときの処理
+    if (pressedKey == '=') {
+        if (enteredDigits[0] == 'k') {
+            MGLCD.Locate(strlen(enteredDigits)-4, 1);
+            MGLCD.print(" dx");
+            float result = integrateExpression(String(enteredDigits));
+            displayResult(result);
+        } else {
+            float result = evaluateExpression(String(enteredDigits));
+            displayResult(result);
+        }
+        return;
+    }
+
+    if (pressedKey == 'F') {
+      sendEquationToPC();
+      return;
+    }
     
     addDigitToDisplay(pressedKey);
     String Digits = String(enteredDigits);
-    String input = Digits; // 文字列を読み込む
-    input.trim(); // 先頭と末尾の空白を除去する
-    
+    String input = Digits; 
+    input.trim(); // 
+
     String str = input.substring(i - 1, i);
-    
-    Serial.println(enteredDigits);
+   
     x = MGLCD.GetX();
     y = MGLCD.GetY();
 
@@ -192,15 +222,50 @@ void loop() {
             }
             n = 3;
         }
-        if (str == "=") {
-            MGLCD.print(" dx");
-            float result = integrateExpression(Digits);
-            displayResult(result);
-            func = ""; 
-        }
+        
+    }else if (func == "l"){ // 対数のカーソル移動
+      if(n == 0){
+        MGLCD.Locate(x, y+1);
+      }
+      else if(n == 1){
+        MGLCD.Locate(x, y-2);
+        func = "";
+        n = 0;
+      }
     }
-
-
+    else if (func == "^" && n == 1){ // 累乗のカーソル移動
+      MGLCD.Locate(x, y+1);
+      int length = strlen(enteredDigits);
+      enteredDigits[length - 1] = '\0';
+      i -= 1;
+      n = 0;
+      func = "";
+    }
+    else if (func == "b"){ // 分数のカーソル移動
+      if (n == 0){
+        MGLCD.Locate(x-1, y-1);
+      }else if(n == 1){
+        MGLCD.Locate(x-1, y+2);
+        m += 1;
+      }
+      else if(n == 2){
+        MGLCD.Locate(x-m, y+2);
+      
+        n = 0;
+        m = 0;
+        func = "";
+      }
+    }else if (func == "r"){
+      if(n == 0){
+        MGLCD.Locate(x, y-1);
+        MGLCD.print("\x84");
+        MGLCD.Locate(x, y);
+      }
+      else if(n == 1){
+        n = 0;
+        func = "";
+      }
+    }
 
     // 特殊機能の処理
     if (str == "A") {
@@ -226,52 +291,47 @@ void loop() {
     }else if (str == "k") {
       displayIntegral();
       func = str;
-    }else if (pressedKey == 'r') {
-      MGLCD.print("\x83"); // Print the custom symbol corresponding to 'i'
-    }else if (str == "P" || func == "H"){
-    }else if (str == "G"){
+    }else if (str == "r") { // 平方根
+      MGLCD.print("\x83");
+      func = str;
+    }else if (str == "l"){ // 対数
+      MGLCD.print("log");
+      func = str;
+    }else if (str == "^"){ // 累乗
+      MGLCD.Locate(x, y-1);
+    }else if (str == "b"){ // 分数
+      MGLCD.print("\x85");
+      func = str;
+    }else if (str == "P" || func == "H"){ // 割り振りなし
+    }else if (str == "G"){ // 関数わけ
       strncpy(&enteredDigits[i-1], " ", 1);
       n +=1;
-    }else if (str == "s"){
+    }else if (str == "s"){ // sin
       MGLCD.print("sin");
-    }else if (str == "c"){
+    }else if (str == "c"){ // cos
       MGLCD.print("cos");
-    }else if (str == "t"){
+    }else if (str == "t"){ // tan
       MGLCD.print("tan");
-    }
-    else if (str == "=") {
-      
-      float result = evaluateExpression(input);
-      displayResult(result);
-      //memset(enteredDigits, 0, sizeof(enteredDigits)); // 入力された数値をリセット
-      //i = 0;
-    }
-    else{
+    }else if (str == "x"){ // x
+      MGLCD.print("x");
+    }else if (str == "*"){ // 乗算
+      MGLCD.print("*");
+    }else{ // 数字
       Digit(str);
     }
     i += 1;
   }
-}
 
-// 入力を簡略化された形式に対応する
-String preprocessInput(String input) {
-    input.replace("s", "sin");
-    input.replace("c", "cos");
-    input.replace("t", "tan");
-    input.replace("asin", "asin");
-    input.replace("acos", "acos");
-    input.replace("atan", "atan");
-    input.replace("r", "sqrt");
-    return input;
+   //Serial.println(enteredDigits);
 }
 
 // 数式の評価
 float evaluateExpression(String expr) {
+
     int startIdx, endIdx;
     while ((startIdx = expr.lastIndexOf('(')) != -1) {
         endIdx = expr.indexOf(')', startIdx);
         if (endIdx == -1) {
-            Serial.println(": error (mismatched parentheses)");
             return NAN;
         }
         String subExpr = expr.substring(startIdx + 1, endIdx);
@@ -318,30 +378,39 @@ float evaluateMulDivPow(String expr, int &idx) {
 
 // 数値と関数の評価
 float evaluateFactor(String expr, int &idx) {
+   
+
     while (idx < expr.length() && expr.charAt(idx) == ' ') idx++;
     if (idx < expr.length() && (expr.charAt(idx) == '+' || expr.charAt(idx) == '-')) {
         char sign = expr.charAt(idx++);
         float result = evaluateFactor(expr, idx);
         return (sign == '-') ? -result : result;
     }
-    if (idx < expr.length() && isDigit(expr.charAt(idx))) {
-        int start = idx;
-        while (idx < expr.length() && (isDigit(expr.charAt(idx)) || expr.charAt(idx) == '.')) idx++;
-        return expr.substring(start, idx).toFloat();
+    if (idx < expr.length() && (isdigit(expr.charAt(idx)) || expr.charAt(idx) == '.')) {
+      int start = idx;
+      while (idx < expr.length() && (isdigit(expr.charAt(idx)) || expr.charAt(idx) == '.')) idx++;
+      return expr.substring(start, idx).toFloat();
     }
-    if (idx < expr.length() - 3 && expr.substring(idx, idx + 3) == "sin") {
-        idx += 3;
+    if (idx < expr.length() && expr.charAt(idx) == 's') {
+        idx += 1;
         return sin(evaluateFactor(expr, idx) * PI / 180.0);
-    } else if (idx < expr.length() - 3 && expr.substring(idx, idx + 3) == "cos") {
-        idx += 3;
+    } else if (idx < expr.length() && expr.charAt(idx) == 'c') {
+        idx += 1;
         return cos(evaluateFactor(expr, idx) * PI / 180.0);
-    } else if (idx < expr.length() - 3 && expr.substring(idx, idx + 3) == "tan") {
-        idx += 3;
+    } else if (idx < expr.length() && expr.charAt(idx) == 't') {
+        idx += 1;
         return tan(evaluateFactor(expr, idx) * PI / 180.0);
-    } else if (idx < expr.length() - 4 && expr.substring(idx, idx + 4) == "sqrt") {
-        idx += 4;
+    } else if (idx < expr.length() && expr.charAt(idx) == 'r') {
+        idx += 1;
         return sqrt(evaluateFactor(expr, idx));
-    }
+     } else if (expr.charAt(idx) == 'b') {
+        return evaluateFraction(expr);
+     } else if (expr.charAt(idx) == 'l') {
+        return calculateLog(expr);
+ 
+     } else if (expr.charAt(idx) == '^') {
+        return pow(evaluateFactor(expr, idx), evaluateFactor(expr, ++idx));
+     }   
     return NAN;
 }
 
@@ -351,11 +420,12 @@ float integrateExpression(String input) {
     int secondSpace = input.indexOf(' ', firstSpace + 1);
 
     float lower = input.substring(1, firstSpace).toFloat(); // "k"の次から最初のスペースまでを下限として解析
-    float upper = input.substring(firstSpace + 1, secondSpace).toFloat();
+    float upper = input.substring(firstSpace + 1 , secondSpace).toFloat();
     String function = input.substring(secondSpace + 1); // 関数部分を取得
 
     const int n = 1000; // 分割数
     float h = (upper - lower) / n; // 区間の幅
+    Serial.println(h);
     float sum = 0.0;
 
     for (int i = 0; i <= n; i++) {
@@ -379,22 +449,20 @@ float evaluateFunctionAtX(String function, float x) {
 
 // 対数の計算
 float calculateLog(String input) {
-    int firstSpace = input.indexOf(' ', 2); // "l "の次のスペースを見つける
-    int secondSpace = input.indexOf(' ', firstSpace + 1);
+    int splitIndex = input.indexOf(' ');
 
-    float base = input.substring(2, firstSpace).toFloat();
-    float value = input.substring(firstSpace + 1).toFloat(); // "=" を含むすべてを値として取得
+    float base = input.substring(1, splitIndex).toFloat();
+    float value = input.substring(splitIndex + 1).toFloat();
 
-    return log(value) / log(base); // 対数の変換公式を使用
+    return log(value) / log(base); //対数の変換公式を使用
 }
 
-// 分数形式を評価する関数
 float evaluateFraction(String input) {
-    int firstSpace = input.indexOf(' ', 2); // "b "の次のスペースを見つける
-    int secondSpace = input.indexOf(' ', firstSpace + 1);
+    int firstSpace = input.indexOf(' ', 1); // "b"の次のスペースを見つける
 
-    float numerator = input.substring(2, firstSpace).toFloat();
-    float denominator = input.substring(firstSpace + 1, secondSpace).toFloat();
+    float numerator = input.substring(1, firstSpace).toFloat(); // "b"の次の文字から最初のスペースまでの部分文字列を数値に変換
+
+    float denominator = input.substring(firstSpace + 1).toFloat(); // 最初のスペースの後から最後までの部分文字列を数値に変換
 
     return numerator / denominator;
 }
@@ -412,4 +480,349 @@ float evaluateInverseTrig(String input) {
         return atan(value) * 180.0 / PI; // ラジアンを度に変換
     }
     return NAN;
+}
+
+void sendEquationToPC() {
+    Serial.print("デバック!!!:");
+    Serial.println(enteredDigits);
+    
+    // Shift + 2
+    pressCtrlAndKey('1');
+
+    // 数式をPCに送信
+    for (int i = 0; i < strlen(enteredDigits); i++) {
+        char c = enteredDigits[i];
+        if (c == 'w') {
+            Keyboard.print("/");
+        } else if (c == '^') {
+            pressCtrlAndKey('5');
+            i++;
+            if (i < strlen(enteredDigits)) {
+                Keyboard.print(enteredDigits[i]);
+            }
+        } else if (c == '+') {
+            pressCtrlAndKey('8');
+        } else if (c == '-') {
+            pressCtrlAndKey('9');
+        } else if (c == '*') {
+            pressCtrlAndKey('0');
+        } else if (c == '(') {
+            pressCtrlAndKey(KEY_F1);
+        } else if (c == ')') {
+            pressCtrlAndKey(KEY_F3);
+        } else if (c == 'r') {
+            pressCtrlAndKey('2'); // \;
+            Keyboard.print("sqrt ");
+            delay(400);
+        } else if (c == 's') {
+            pressCtrlAndKey('2'); // \;
+            Keyboard.print("sin ");
+            delay(400);
+            String enteredDigitsStr = enteredDigits; handleSubFunction1(i, enteredDigitsStr);
+        } else if (c == 'q') {
+            pressCtrlAndKey('2');
+            Keyboard.print("sin ");
+            delay(400);
+            pressCtrlAndKey('5');
+            pressCtrlAndKey('3');
+            Keyboard.print("-1");
+            pressCtrlAndKey('4');
+            String enteredDigitsStr = enteredDigits; handleSubFunction1(i, enteredDigitsStr);
+        } else if (c == 'c') {
+            pressCtrlAndKey('2');
+            Keyboard.print("cos ");
+            delay(400);
+            String enteredDigitsStr = enteredDigits; handleSubFunction1(i, enteredDigitsStr);
+        } else if (c == 'q') {
+            pressCtrlAndKey('2');
+            Keyboard.print("cos ");
+            delay(400);
+            pressCtrlAndKey('5');
+            pressCtrlAndKey('3');
+            Keyboard.print("-1");
+            pressCtrlAndKey('4');
+            String enteredDigitsStr = enteredDigits; handleSubFunction1(i, enteredDigitsStr);
+        } else if (c == 't') {
+            pressCtrlAndKey('2');
+            Keyboard.print("tan ");
+            delay(400);
+            String enteredDigitsStr = enteredDigits; handleSubFunction1(i, enteredDigitsStr);
+        } else if (c == 'q') {
+            pressCtrlAndKey('2');
+            Keyboard.print("tan ");
+            delay(400);
+            pressCtrlAndKey('5');
+            pressCtrlAndKey('3');
+            Keyboard.print("-1");
+            pressCtrlAndKey('4');
+            String enteredDigitsStr = enteredDigits; handleSubFunction1(i, enteredDigitsStr);
+        } else if (c == 'b') {
+            pressCtrlAndKey('2'); // \
+            delay(500);
+            Keyboard.print("frac");
+            String enteredDigitsStr = enteredDigits; handleSubFunction1(i, enteredDigitsStr);
+            while (enteredDigits[i] == ' ') { // 分母の前のスペースを飛ばす
+                i++;
+            }
+           handleSubFunction2(i, enteredDigitsStr);
+            continue; // ループの残りをスキップして次に進む
+        } else if (c == 'l') { // log対応
+            pressCtrlAndKey('2');
+            delay(500);
+            Keyboard.print("log");
+            pressCtrlAndKey('7');
+            i++; // 'l'の次の文字に進む
+            while (enteredDigits[i] == ' ') { // スペースを飛ばす
+                i++;
+            }
+            pressCtrlAndKey('3'); 
+            // 底を取得
+            while (i < strlen(enteredDigits) && (isDigit(enteredDigits[i]) || enteredDigits[i] == '.')) {
+                Keyboard.print(enteredDigits[i]);
+                i++;
+            }
+            while (enteredDigits[i] == ' ') { // 真数の前のスペースを飛ばす
+                i++;
+            }
+            pressCtrlAndKey('4');
+            String enteredDigitsStr = enteredDigits; handleSubFunction2(i, enteredDigitsStr);
+            continue; // ループの残りをスキップして次に進む
+
+        } else if (c == 'k') { //積分処理
+            pressCtrlAndKey('2');
+            delay(700);
+            Keyboard.print("int");
+            pressCtrlAndKey('7');
+            String enteredDigitsStr = enteredDigits; handleSubFunction1(i, enteredDigitsStr);
+            
+            // 上限を取得
+            while (enteredDigits[i] == ' ') { // スペースを飛ばす
+                i++;
+            }
+            pressCtrlAndKey('5');
+            handleSubFunction2(i, enteredDigitsStr);
+            while (enteredDigits[i] == ' ') { // スペースを飛ばす
+                i++;
+            }
+            handleSubFunction2(i, enteredDigitsStr);
+           
+            continue; // ループの残りをスキップして次に進む
+        } else if (c == ' ') {
+            Keyboard.print(' ');
+        } else if (strncmp(enteredDigits + i, "asin", 4) == 0 || strncmp(enteredDigits + i, "acos", 4) == 0 || strncmp(enteredDigits + i, "atan", 4) == 0) {
+            char trigFunc[5];
+            strncpy(trigFunc, enteredDigits + i, 4);
+            trigFunc[4] = '\0';
+            i += 4;
+            pressCtrlAndKey('2');
+            Keyboard.print(trigFunc);
+            Keyboard.print(" ");
+            delay(400);
+            pressCtrlAndKey('3');
+            while (i < strlen(enteredDigits) && (isDigit(enteredDigits[i]) || enteredDigits[i] == '.')) {
+                Keyboard.print(enteredDigits[i]);
+                i++;
+            }
+            pressCtrlAndKey('4');
+            continue; // ループの残りをスキップして次に進む
+        } else {
+          Keyboard.print(c);
+        
+        }
+    }
+
+    // 結果をPCに送信
+    pressCtrlAndKey('6');
+    delay(100);
+    float result = evaluateExpression(String(enteredDigits));
+    Keyboard.releaseAll(); // 少しの間押し続ける
+    Keyboard.print(result);
+
+    // エンターキーを送信
+    Keyboard.write(KEY_RETURN);
+}
+
+void pressCtrlAndKey(char key) {
+    Keyboard.press(KEY_LEFT_CTRL);
+    Keyboard.press(key);
+    delay(400);
+    Keyboard.releaseAll();
+}
+
+void handleSubFunction1(int &index, String &function) {
+    pressCtrlAndKey('3');
+    index += 1;
+    if (isFunction(function[index])) {
+        String subFunction = extractFunction(index);
+        sendFunctionToPC(subFunction);
+    } else {
+        while (index < function.length() && (isDigit(function[index]) || function[index] == '.' || function[index] == 'x')) {
+            Keyboard.print(function[index]);
+            index++;
+        }
+    }
+    if (isFunction(function[index])) {
+        String subFunction = extractFunction(index);
+        sendFunctionToPC(subFunction);
+        index++;
+    }
+    pressCtrlAndKey('4');
+}
+
+void handleSubFunction2(int &index, String &function) {
+    pressCtrlAndKey('3'); 
+    Serial.println(function[index]);
+    if (isFunction(function[index])) {
+        String subFunction = extractFunction(index);
+        sendFunctionToPC(subFunction);
+        index++;
+      
+    } else {
+        while (index < function.length() && (isDigit(function[index]) || function[index] == '.'|| function[index] == 'x')) {
+            Keyboard.print(function[index]);
+            index++;
+        }
+    }
+    if (isFunction(function[index])) {
+        String subFunction = extractFunction(index);
+        sendFunctionToPC(subFunction);
+        index++;
+    }
+    pressCtrlAndKey('4');
+}
+
+int countTotalCharacters(const char* enteredDigits) {
+    int totalCount = 0;
+    for (int i = 0; enteredDigits[i] != '\0'; i++) {
+        if (isdigit(enteredDigits[i]) || isalpha(enteredDigits[i]) || isspace(enteredDigits[i])) {
+            totalCount++;
+        }
+    }
+    return totalCount;
+}
+
+// 新しい関数: サブ関数の抽出
+bool isFunction(char c) {
+    return (c == 's' || c == 'c' || c == 't' || c == 'r' || c == 'b' || c == 'k' || c == 'l' || c == '^');
+}
+
+// 新しい関数: サブ関数の抽出
+String extractFunction(int &index) {
+    String func;
+    // 関数名の抽出 (^ と r を含む)
+    func += enteredDigits[index];
+    index++;
+
+    Serial.print("func1");
+    Serial.println(func);
+    // スペースをスキップ
+    while (index < strlen(enteredDigits) && enteredDigits[index] == ' ') {
+        index++;
+    }
+
+
+    // 引数の抽出
+    while (index < strlen(enteredDigits) && (isDigit(enteredDigits[index]) || enteredDigits[index] == '.' || enteredDigits[index] == 'x')) {
+        func += enteredDigits[index];
+        index++;
+    }
+    while (index < strlen(enteredDigits) && enteredDigits[index] == ' ') {
+        func += enteredDigits[index];
+        index++;
+    }
+
+
+    // 引数の抽出
+    while (index < strlen(enteredDigits) && (isDigit(enteredDigits[index]) || enteredDigits[index] == '.' || enteredDigits[index] == 'x')) {
+        func += enteredDigits[index];
+        index++;
+    }
+    
+    Serial.print("デバック2:");
+    Serial.println(func);
+    return func;
+    
+}
+
+void pressCtrlAndKeyWithNextChar(int &index, String &function) {
+    index++;
+    pressCtrlAndKey('3');
+    while (index < function.length() && function[index] != ' ') {
+        Keyboard.print(function[index]);
+        index++;
+    }
+    pressCtrlAndKey('4');
+}
+
+void sendFunctionToPC(String function) {
+    Serial.print("Function list:");
+    Serial.println(function);
+
+    // サブ関数の評価と送信
+    for (int j = 0; j < function.length(); j++) {
+        char c = function[j];
+        if (c == 's') {
+            pressCtrlAndKey('2');
+            Keyboard.print("sin ");
+            delay(400);
+            pressCtrlAndKeyWithNextChar(j, function);
+        } else if (c == 'c') {
+            pressCtrlAndKey('2');
+            Keyboard.print("cos ");
+            delay(400);
+            pressCtrlAndKeyWithNextChar(j, function);
+        } else if (c == 't') {
+            pressCtrlAndKey('2');
+            Keyboard.print("tan ");
+            delay(400);
+            pressCtrlAndKeyWithNextChar(j, function);
+        } else if (c == 'r') {
+            pressCtrlAndKey('2');
+            Keyboard.print("sqrt ");
+            delay(400);
+            pressCtrlAndKeyWithNextChar(j, function);
+        } else if (c == 'b') { // \frac対応
+            pressCtrlAndKey('2'); // \
+            delay(500);
+            Keyboard.print("frac");
+             Serial.println("ここまで来とる");
+             Serial.println(function);
+            pressCtrlAndKey('3'); // {
+            j++; // 'b'の次の文字に進む
+            while (j < function.length() && (isDigit(function[j]) || function[j] == '.'|| function[j] == 'x')) {
+                Keyboard.print(function[j]);
+                j++;
+            }
+            pressCtrlAndKey('4'); // }
+            while (function[j] == ' ') { // 分母の前のスペースを飛ばす
+                j++;
+            }
+            pressCtrlAndKey('3'); // {
+            // 分母を取得
+            while (j < function.length() && (isDigit(function[j]) || function[j] == '.'|| function[j] == 'x')) {
+                Keyboard.print(function[j]);
+                j++;
+            }
+            pressCtrlAndKey('4'); // }
+            continue; // ループの残りをスキップして次に進む
+
+        } else if (c == '^') {
+            pressCtrlAndKey('5');
+            pressCtrlAndKeyWithNextChar(j, function);
+        } else if (c == '+') {
+            pressCtrlAndKey('8');
+            delay(400);
+            Keyboard.releaseAll();
+        } else if (c == '-') {
+            pressCtrlAndKey('9');
+            delay(400);
+            Keyboard.releaseAll();
+        } else if (c == '*') {
+            pressCtrlAndKey('0');
+            delay(400);
+            Keyboard.releaseAll();
+        }
+    }
+    Serial.print("Function list2:");
+    Serial.println(function);
 }
