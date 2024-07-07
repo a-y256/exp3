@@ -1,5 +1,6 @@
 #include <ResKeypad.h>
 #include <mglcd.h>
+#include <Arduino.h>
 
 // A0につながっているキーパッドをkeypad1とする
 ResKeypad keypad1(A4, 16, RESKEYPAD_4X4, RESKEYPAD_4X4_SIDE_A); // SIDE Aに部品を実装した場合はこの行を有効にする
@@ -73,6 +74,13 @@ PROGMEM const uint8_t UserChars[][5] = {
 
 int x;
 int y;
+int i = 1;
+int n = 0;
+int xa;
+int ya;
+int xb;
+int yb;
+String func = "";
 
 #undef s
 #undef M
@@ -82,6 +90,7 @@ static mglcd_SG12864 MGLCD(PinAssignTable);
 
 const int maxDigits = 16; // 最大表示桁数
 char enteredDigits[maxDigits + 1] = ""; // 入力された数値を保存する配列
+char pressedKey;
 
 void setup() {
   Serial.begin(9600);
@@ -94,9 +103,31 @@ void setup() {
 void addDigitToDisplay(char digit) {
     int length = strlen(enteredDigits);
     if (length < maxDigits) {
-        enteredDigits[length] = digit;
-        enteredDigits[length + 1] = '\0';// リストに追加
+      strcat(enteredDigits, pressedKey);
+      enteredDigits[length] = digit;
+      enteredDigits[length + 1] = '\0';// リストに追加
     }
+}
+
+void Digit(String digit){
+  MGLCD.print(pressedKey);
+}
+
+// 積分
+void integrate(String input){
+   MGLCD.print("\x81");
+  MGLCD.Locate(x,y-1);
+  MGLCD.print("\x80");
+  xb = MGLCD.GetX() - 1;
+  yb = MGLCD.GetY();
+  MGLCD.Locate(x,y+1);
+  MGLCD.print("\x82");
+  xa = MGLCD.GetX() - 1;
+  ya = MGLCD.GetY();
+  MGLCD.Locate(xb, yb);
+  x = MGLCD.GetX();
+  y = MGLCD.GetY();
+  MGLCD.Locate(x+1,y-1);
 }
 
 void loop() {
@@ -109,25 +140,53 @@ void loop() {
   } // if
 
   if (key >= 0) {
-    char pressedKey = keys[key];
+    pressedKey = keys[key];
     
-    String enteredString = String(enteredDigits);
-    String func = enteredString.substring(0, enteredString.indexOf(' '));
     addDigitToDisplay(pressedKey);
-    Serial.println(pressedKey);
+    String Digits = String(enteredDigits);
+    String input = Digits; // 文字列を読み込む
+    input.trim(); // 先頭と末尾の空白を除去する
+    
+    String str = input.substring(i - 1, i);
+    
+    Serial.println(enteredDigits);
     x = MGLCD.GetX();
-    y = MGLCD.GetY(); // 次に表示する文字の座標を取得する
+    y = MGLCD.GetY();
+
+    if(func == "k"){
+      if(n == 0){
+        MGLCD.Locate(xa+1, ya);
+        xa = MGLCD.GetX();
+        ya = MGLCD.GetY();
+      }else if(n == 1){
+        MGLCD.Locate(xb+1, yb);
+        xb = MGLCD.GetX();
+        yb = MGLCD.GetY();
+      }else if(n == 2){
+        if (xa <= xb){
+          MGLCD.Locate(xb, yb+1);
+        }else{
+          MGLCD.Locate(xa, ya+1);
+        }
+        n = 3;
+      }
+      if (str == "="){
+        MGLCD.print(" dx");
+        func = ""; 
+      }
+    }
 
     // 特殊機能の処理
-    if (pressedKey == 'A') {
+    if (str == "A") {
       MGLCD.Reset();
-      MGLCD.Locate(0,1);
       memset(enteredDigits, 0, sizeof(enteredDigits)); // 入力された数値をリセット
-    }
-    if (pressedKey == 'D'){
+      i = 0;
+      MGLCD.Locate(0,1);
+    }else if (str == "D"){
       int length = strlen(enteredDigits);
       if (length > 0) {
         enteredDigits[length - 1] = '\0';
+        i -= 1;
         MGLCD.Locate(x-1,y-1);
         MGLCD.print(" ");
         MGLCD.Locate(x-1,y+1);
@@ -138,20 +197,25 @@ void loop() {
         y = MGLCD.GetY();
         MGLCD.Locate(x-1,y);
       }
-    }
-    if (pressedKey == 'k') {
-      MGLCD.print("\x81");
-      MGLCD.Locate(x,y-1);
-      MGLCD.print("\x80 b");
-      MGLCD.Locate(x,y+1);
-      MGLCD.print("\x82 a");
-      x = MGLCD.GetX();
-      y = MGLCD.GetY();
-      MGLCD.Locate(x+1,y-1);
-      MGLCD.print("dx");
-    }
-    if (pressedKey == 'r') {
+    }else if (str == "k") {
+      integrate(input);
+      func = str;
+    }else if (pressedKey == "r") {
       MGLCD.print("\x83"); // Print the custom symbol corresponding to 'i'
+    }else if (str == "P" || func == "H"){
+    }else if (str == "G"){
+      strncpy(&enteredDigits[i], " ", 1);
+      n +=1;
+    }else if (str == "s"){
+      MGLCD.print("sin");
+    }else if (str == "c"){
+      MGLCD.print("cos");
+    }else if (str == "t"){
+      MGLCD.print("tan");
     }
+    else{
+      Digit(str);
+    }
+    i += 1;
   }
 }
