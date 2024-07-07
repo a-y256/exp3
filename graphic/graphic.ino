@@ -70,12 +70,27 @@ PROGMEM const uint8_t UserChars[][5] = {
     s  M M M M M M M M,
     s  _ _ _ _ _ _ _ _
   },
+  { // 84
+    s  M _ _ _ _ _ _ _,
+    s  M _ _ _ _ _ _ _,
+    s  M _ _ _ _ _ _ _,
+    s  M _ _ _ _ _ _ _,
+    s  M _ _ _ _ _ _ _
+  },
+  { // 85
+    s  _ _ _ M _ _ _ _,
+    s  _ _ _ M _ _ _ _,
+    s  _ _ _ M _ _ _ _,
+    s  _ _ _ M _ _ _ _,
+    s  _ _ _ M _ _ _ _
+  }
 };
 
 int x;
 int y;
 int i = 1;
 int n = 0;
+int m = 0;
 int xa;
 int ya;
 int xb;
@@ -113,9 +128,9 @@ void Digit(String digit){
   MGLCD.print(pressedKey);
 }
 
-// 積分
+// 積分記号
 void integrate(String input){
-   MGLCD.print("\x81");
+  MGLCD.print("\x81");
   MGLCD.Locate(x,y-1);
   MGLCD.print("\x80");
   xb = MGLCD.GetX() - 1;
@@ -153,7 +168,7 @@ void loop() {
     x = MGLCD.GetX();
     y = MGLCD.GetY();
 
-    if(func == "k"){
+    if(func == "k"){ // 積分のカーソル移動
       if(n == 0){
         MGLCD.Locate(xa+1, ya);
         xa = MGLCD.GetX();
@@ -175,14 +190,62 @@ void loop() {
         func = ""; 
       }
     }
+    else if (func == "l"){ // 対数のカーソル移動
+      if(n == 0){
+        MGLCD.Locate(x, y+1);
+      }
+      else if(n == 1){
+        MGLCD.Locate(x, y-2);
+        func = "";
+        n = 0;
+      }
+    }
+    else if (func == "^" && n == 1){ // 累乗のカーソル移動
+      MGLCD.Locate(x, y+1);
+      int length = strlen(enteredDigits);
+      enteredDigits[length - 1] = '\0';
+      i -= 1;
+      n = 0;
+      func = "";
+    }
+    else if (func == "b"){ // 分数のカーソル移動
+      if (m > 1 && n == 1){
+        MGLCD.Locate(x, y+1);
+      }
+      if(n == 1){
+        MGLCD.Locate(x, y-1);
+        m += 1;
+      }
+      else if(n == 2){
+        MGLCD.Locate(x-m, y+2);
+      }
+      else if(n == 3){
+        MGLCD.Locate(x, y-1);
+        n = 0;
+        m = 0;
+        func = "";
+      }
+    }
+    else if (func == "r"){
+      if(n == 0){
+        MGLCD.Locate(x, y-1);
+        MGLCD.print("\x84");
+        MGLCD.Locate(x, y);
+      }
+      else if(n == 1){
+        n = 0;
+        func = "";
+      }
+    }
 
     // 特殊機能の処理
-    if (str == "A") {
+    if (str == "A") { // すべて消す
       MGLCD.Reset();
       memset(enteredDigits, 0, sizeof(enteredDigits)); // 入力された数値をリセット
       i = 0;
       MGLCD.Locate(0,1);
-    }else if (str == "D"){
+    }
+    else if (str == "D"){ // 一文字消す
       int length = strlen(enteredDigits);
       if (length > 0) {
         enteredDigits[length - 1] = '\0';
@@ -197,23 +260,55 @@ void loop() {
         y = MGLCD.GetY();
         MGLCD.Locate(x-1,y);
       }
-    }else if (str == "k") {
+    }
+    else if (str == "k") { // 積分
       integrate(input);
       func = str;
-    }else if (pressedKey == "r") {
-      MGLCD.print("\x83"); // Print the custom symbol corresponding to 'i'
-    }else if (str == "P" || func == "H"){
-    }else if (str == "G"){
+    }
+    else if (pressedKey == "r") { // 平方根
+      MGLCD.print("\x83");
+      func = str;
+    }
+    else if (str == "l"){ // 対数
+      MGLCD.print("log");
+      func = str;
+    }
+    else if (str == "^"){ // 累乗
+      MGLCD.Locate(x, y-1);
+      func = str;
+    }
+    else if (str == "b"){ // 分数
+      MGLCD.print("\x85");
+      func = str;
+    }
+    else if (str == "P" || func == "H"){ // 割り振りなし
+    }
+    else if (str == "G"){ // 関数わけ
       strncpy(&enteredDigits[i-1], " ", 1);
       n +=1;
-    }else if (str == "s"){
+    }
+    else if (str == "s"){ // sin
       MGLCD.print("sin");
-    }else if (str == "c"){
+    }
+    else if (str == "c"){ // cos
       MGLCD.print("cos");
-    }else if (str == "t"){
+    }
+    else if (str == "t"){ // tan
       MGLCD.print("tan");
     }
-    else{
+    else if (str == "x"){ // x
+      MGLCD.print("X");
+    }
+    else if (str == "*"){ // 乗算
+      MGLCD.print(" x ");
+    }
+    else if (str == "+"){ // 足し算
+      MGLCD.print(" + ");
+    }
+    else if (str == "-"){ // 引き算
+      MGLCD.print(" - ");
+    }
+    else{ // 数字
       Digit(str);
     }
     i += 1;
