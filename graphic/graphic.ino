@@ -204,7 +204,7 @@ void loop() {
       MGLCD.print("\x83"); // Print the custom symbol corresponding to 'i'
     }else if (str == "P" || func == "H"){
     }else if (str == "G"){
-      strncpy(&enteredDigits[i], " ", 1);
+      strncpy(&enteredDigits[i-1], " ", 1);
       n +=1;
     }else if (str == "s"){
       MGLCD.print("sin");
