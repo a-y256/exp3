@@ -15,7 +15,7 @@ void loop() {
         if (input.startsWith("i ")) {
             float result = integrate(input);
             Serial.print(input);
-            Serial.println(" = ");
+        
             Serial.println(result, 2); // 結果を2桁の精度で表示
         } else if (input.startsWith("l ")) {
             float result = calculateLog(input);
