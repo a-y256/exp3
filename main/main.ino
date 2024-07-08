@@ -101,7 +101,7 @@ int xb;
 int yb;
 String func = "";
 float lastResult = 0;
-int sensorPin = 1;
+int sensorPin = 0;
 bool sensorTriggered = false;
 int ledPin = A0;
 int pirValue; // PIRセンサーの値を格納する場所
