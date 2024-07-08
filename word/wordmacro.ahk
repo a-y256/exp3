@@ -35,7 +35,8 @@ Send, {-}
 return
 
 ^0::
-Send, ×
+ClipBoard := "\times"
+Send, ^v
 return
 
 ^F1::

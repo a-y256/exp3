@@ -219,15 +219,18 @@ void loop() {
             MGLCD.print(" dx");
             float result = integrateExpression(String(enteredDigits));
             displayResult(result);
+        lastResult = result; 
         } else {
             float result = evaluateExpression(String(enteredDigits));
             displayResult(result);
+        lastResult = result; 
         }
+        //
         return;
     }
 
     if (pressedKey == 'F') {
-      sendEquationToPC();
+      sendEquationToPC(lastResult);
       return;
     }
     
@@ -505,7 +508,7 @@ float evaluateFraction(String input) {
 
 
 
-void sendEquationToPC() {;
+void sendEquationToPC(float result) {;
 
     // Shift + 2
     pressCtrlAndKey('1');
@@ -615,10 +618,12 @@ void sendEquationToPC() {;
     // 結果をPCに送信
     pressCtrlAndKey('6');
     delay(100);
-    float result = evaluateExpression(String(enteredDigits));
+    
     Keyboard.releaseAll(); // 少しの間押し続ける
-    Keyboard.print(result);
-
+    // 計算結果をPCに送信
+    char resultStr[17];
+    dtostrf(result, 0, 2, resultStr); 
+    Keyboard.print(resultStr);
     // エンターキーを送信
     Keyboard.write(KEY_RETURN);
 }
