@@ -18,30 +18,37 @@ void loop()
         String resultString = "";
         float result = 0;
 
-        switch (prefix) {
-            case 'i': {
+        switch (prefix) 
+        {
+            case 'i': 
+            {
                 result = integrate(input);
                 resultString = input + String(result, 2);
                 break;
             }
-            case 'l': {
+            case 'l': 
+            {
                 result = Log(input);
                 resultString = "log_" + input.substring(2, input.indexOf(' ', 2)) + " " + input.substring(input.indexOf(' ', 2) + 1) + String(result, 2);
                 break;
             }
-            case 'b': {
+            case 'b': 
+            {
                 result = Fraction(input);
                 resultString = input + String(result, 2);
                 break;
             }
-            case 'a': {
-                if (input.startsWith("as") || input.startsWith("ac") || input.startsWith("at")) {
+            case 'a': 
+            {
+                if (input.startsWith("as") || input.startsWith("ac") || input.startsWith("at")) 
+                {
                     result = arc(input);
                     resultString = input + String(result, 0);
                 }
                 break;
             }
-            default: {
+            default: 
+            {
                 result = calculation(input);
                 resultString = input + String(result, 2);
                 break;
@@ -53,7 +60,8 @@ void loop()
 }
 
 // 入力を簡略化された形式に対応する
-String preprocessInput(String input) {
+String preprocessInput(String input)
+{
     input.replace("s", "sin");
     input.replace("c", "cos");
     input.replace("t", "tan");
@@ -61,10 +69,12 @@ String preprocessInput(String input) {
     return input;
 }
 
-// 数式の評価
-float calculation(String expr) {
+// 括弧の計算
+float calculation(String expr)
+{
     int startIdx, endIdx;
-    while ((startIdx = expr.lastIndexOf('(')) != -1) {
+    while ((startIdx = expr.lastIndexOf('(')) != -1)
+    {
         endIdx = expr.indexOf(')', startIdx);
         if (endIdx == -1) {
             Serial.println(": error (mismatched parentheses)");
@@ -77,7 +87,7 @@ float calculation(String expr) {
     return evaluateAddSub(expr);
 }
 
-// 足し算と引き算の評価
+// 足し算と引き算の計算
 float evaluateAddSub(String expr) 
 {
     int idx = 0;
@@ -106,7 +116,7 @@ float evaluateAddSub(String expr)
     return result;
 }
 
-// 乗算、除算、累乗の評価
+// 乗算、除算、累乗の計算
 float evaluateMulDivPow(String expr, int &idx) 
 {
     float result = evaluateFactor(expr, idx);
@@ -168,15 +178,14 @@ float evaluateFactor(String expr, int &idx)
     return NAN;
 }
 
-// 数式を数値積分する関数（台形法）
+// 数値積分の計算（台形法）
 float integrate(String input)
 {
     int firstSpace = input.indexOf(' ', 2); // "i "の次のスペースを見つける
-    int secondSpace = input.indexOf(' ', firstSpace + 1);
-    //indexOf→指定した文字列が最初に出現する位置を返す
-    float lower = input.substring(2, firstSpace).toFloat();
-    float upper = input.substring(firstSpace + 1, secondSpace).toFloat();
-    String function = input.substring(secondSpace + 1); // "=" を無視
+    int secondSpace = input.indexOf(' ', firstSpace + 1);//さらに次のスペースを見つける
+    float lower = input.substring(2, firstSpace).toFloat();//下限の設定
+    float upper = input.substring(firstSpace + 1, secondSpace).toFloat();//上限の設定
+    String function = input.substring(secondSpace + 1); // 関数の設定
 
     const int n = 1000; // 分割数
     float h = (upper - lower) / n; // 区間の幅
@@ -185,7 +194,7 @@ float integrate(String input)
     for (int i = 0; i <= n; i++) 
     {
         float x = lower + i * h;//現在の小区間の開始位置を示す。
-        float y = evaluateFunctionAtX(function, x);//下で定義した関数に文字と開始位置を代入
+        float y = FunctionAtX(function, x);//関数に文字と開始位置を代入
         if (i == 0 || i == n)
         {
             sum += y / 2.0;
@@ -199,7 +208,7 @@ float integrate(String input)
 }
 
 // 関数の式と x の値を受け取って評価する関数//function計算式　string→文字列  
-float evaluateFunctionAtX(String expr, float num)
+float FunctionAtX(String expr, float num)
 {
   expr.replace("x", String(num,6));//変数を置換
   float result = calculation(expr);//文字列から計算を行う
