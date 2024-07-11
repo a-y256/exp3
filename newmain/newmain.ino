@@ -382,9 +382,12 @@ void loop() {
       Digit(str);
     }
     i += 1;
+    Serial.print(x);
+    Serial.print(",");
+    Serial.println(y);
   }
 
-   //Serial.println(enteredDigits);
+   
 }
 
 // 数式の評価
