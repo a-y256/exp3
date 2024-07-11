@@ -1,5 +1,5 @@
-int ledPin = 13;  // Arduinoの13番ピンに接続されたLED
-int pirPin = 6; // HC-S501の入力ピン
+int ledPin = A0;  // Arduinoの13番ピンに接続されたLED
+int pirPin = 0; // HC-S501の入力ピン
 
 int pirValue; // PIRセンサーの値を格納する場所
 unsigned long lastMotionTime = 0; // 最後に動きを検出した時間

@@ -1,5 +1,6 @@
 #include <ResKeypad.h>
-#include <mglcd.h>
+#include <MGLCD.h>
+#include <MGLCD_SPI.h>
 #include <Arduino.h>
 #include <HID-Project.h>
 #include <math.h>
@@ -24,22 +25,26 @@ char keys[] = {
   'F', 'G', 'H', 'P'
 };
 
-static const TLcdPinAssignTable PinAssignTable = {
-  A0_DI  : A3, // A0 for SG12232, D/I for SG12864
-  CS1_E1 : 3, // CS1
-  CS2_E2 : 2, // CS2
-  E      : 13,
-  RW     : 12,
-  DB0    : 8,
-  DB1    : 9,
-  DB2    : 10,
-  DB3    : 11,
-  DB4    : 4,
-  DB5    : 5,
-  DB6    : 6,
-  DB7    : 7
-}; // PinAssignTable;
-  
+// define device number
+#define DEV_AQM1248A   1
+#define DEV_GH12864_20 2
+
+// select device
+//#define MGLCD_DEVICE DEV_AQM1248A   // enable this line if AQM1248A is used
+#define MGLCD_DEVICE DEV_GH12864_20 // enable this line if GH12864-20 is used
+
+#define CS_PIN   10
+#define DI_PIN    9
+#define MAX_FREQ (1000*1000UL)
+
+#if MGLCD_DEVICE==DEV_AQM1248A
+  static MGLCD_AQM1248A_SPI MGLCD(MGLCD_SpiPin2(CS_PIN, DI_PIN), MAX_FREQ);
+#elif MGLCD_DEVICE==DEV_GH12864_20
+  static MGLCD_GH12864_20_SPI MGLCD(MGLCD_SpiPin2(CS_PIN, DI_PIN), MAX_FREQ);
+#else
+  #error "invalid value:MGLCD_DEVICE"
+#endif
+
 #define s ((((((((((((((((0
 #define M <<1)+1)
 #define _ <<1))
@@ -108,13 +113,14 @@ int pirValue; // PIRセンサーの値を格納する場所
 unsigned long lastMotionTime = 0; // 最後に動きを検出した時間
 const unsigned long delayTime = 5000; // 遅延時間（ミリ秒単位、ここでは5秒）
 
-
+const int X_pin = 0;
+const int Y_pin = 1;
 
 #undef s
 #undef M
 #undef _
 
-static mglcd_SG12864 MGLCD(PinAssignTable);
+
 
 char enteredDigits[17] = ""; // 入力された数値を保存する配列
 char pressedKey;
@@ -125,6 +131,10 @@ void setup() {
   pinMode(ledPin, OUTPUT); // LEDピンを出力モードに設定
   pinMode(sensorPin, INPUT); // PIRピンを入力モードに設定
   digitalWrite(ledPin, LOW);
+
+  while (MGLCD.Reset());
+MGLCD.UserChars(UserChars, sizeof(UserChars) / 5);
+MGLCD.Locate(0,1);
 }
 
 void addDigitToDisplay(char digit) {
@@ -181,7 +191,7 @@ void loop() {
   
   signed char key; // キー番号
   pirValue = digitalRead(sensorPin); 
-  Serial.println(pirValue);
+  //Serial.println(pirValue);
   if (pirValue == 1) {
       lite = 1;
       digitalWrite(ledPin, HIGH); // LEDを点灯
@@ -193,6 +203,20 @@ void loop() {
       lite=0;
     }
   }
+
+  // ジョイスティックの右方向入力をチェック
+  if (analogRead(Y_pin) < 300) {
+    // 関数分け機能の処理
+    strncpy(&enteredDigits[i - 1], " ", 1);
+    n += 1;
+    i += 1; // `i` を更新してずれを防ぐ
+    delay(500); // デバウンスのための遅延
+    Serial.println("関数わけ");
+    Serial.println(enteredDigits);
+    return; // ループの残りをスキップして次に進む
+  }
+
+
   
   key = keypad1.GetKey(); 
   if (key < 0) { // keypad1のキーが押されていなかった場合
@@ -351,7 +375,9 @@ void loop() {
     }else if (str == "i"){ // sin
       MGLCD.print("asin");
     }else if (str == "*"){ // 乗算
-      MGLCD.print("*");
+      MGLCD.print("x");
+     }else if (str == "x"){ // 乗算
+    MGLCD.print(" X");
     }else{ // 数字
       Digit(str);
     }
@@ -531,32 +557,32 @@ void sendEquationToPC(float result) {;
             pressCtrlAndKey(KEY_F3);
         } else if (c == 'r') {
             pressCtrlAndKey('2'); // \;
-            Keyboard.print("sqrt ");
+            pressCtAltdKey('6');
             delay(400);
         } else if (c == 's') {
             pressCtrlAndKey('2'); // \;
-            Keyboard.print("sin ");
+            pressCtAltdKey('1');
             delay(400);
             String enteredDigitsStr = enteredDigits; handleSubFunction1(i, enteredDigitsStr);
         } else if (c == 'i') {
             pressCtrlAndKey('2');
-            Keyboard.print("sin ");
+            pressCtAltdKey('1');
             delay(400);
             performKeySequence(enteredDigits, i);
         } else if (c == 'c') {
             pressCtrlAndKey('2');
-            Keyboard.print("cos ");
+            pressCtAltdKey('2');
             delay(400);
             String enteredDigitsStr = enteredDigits; handleSubFunction1(i, enteredDigitsStr);
         } else if (c == 't') {
             pressCtrlAndKey('2');
-            Keyboard.print("tan ");
+            pressCtAltdKey('3');
             delay(400);
             String enteredDigitsStr = enteredDigits; handleSubFunction1(i, enteredDigitsStr);
         } else if (c == 'b') {
             pressCtrlAndKey('2'); // \
             delay(500);
-            Keyboard.print("frac");
+            pressCtAltdKey('4');
             String enteredDigitsStr = enteredDigits; handleSubFunction1(i, enteredDigitsStr);
             while (enteredDigits[i] == ' ') { // 分母の前のスペースを飛ばす
                 i++;
@@ -566,7 +592,7 @@ void sendEquationToPC(float result) {;
         } else if (c == 'l') { // log対応
             pressCtrlAndKey('2');
             delay(500);
-            Keyboard.print("log");
+            pressCtAltdKey('5');
             pressCtrlAndKey('7');
             i++; // 'l'の次の文字に進む
             while (enteredDigits[i] == ' ') { // スペースを飛ばす
@@ -634,10 +660,13 @@ void performKeySequence(String enteredDigits, int i) {
     String enteredDigitsStr = enteredDigits;handleSubFunction1(i, enteredDigitsStr);
 } 
 
-
-
-
-
+void pressCtAltdKey(char key) {
+  Keyboard.press(KEY_LEFT_CTRL);
+  Keyboard.press(KEY_LEFT_ALT);
+  Keyboard.press(key);
+  delay(400);
+  Keyboard.releaseAll();
+}
 
 void pressCtrlAndKey(char key) {
     Keyboard.press(KEY_LEFT_CTRL);
@@ -754,29 +783,28 @@ void sendFunctionToPC(String function) {
         char c = function[j];
         if (c == 's') {
             pressCtrlAndKey('2');
-            Keyboard.print("sin ");
+            pressCtAltdKey('1');
             delay(400);
             pressCtrlAndKeyWithNextChar(j, function);
         } else if (c == 'c') {
             pressCtrlAndKey('2');
-            Keyboard.print("cos ");
+            pressCtAltdKey('2');
             delay(400);
             pressCtrlAndKeyWithNextChar(j, function);
         } else if (c == 't') {
             pressCtrlAndKey('2');
-            Keyboard.print("tan ");
+            pressCtAltdKey('3');
             delay(400);
             pressCtrlAndKeyWithNextChar(j, function);
         } else if (c == 'r') {
             pressCtrlAndKey('2');
-            Keyboard.print("sqrt ");
+            pressCtAltdKey('6');
             delay(400);
             pressCtrlAndKeyWithNextChar(j, function);
         } else if (c == 'b') { // \frac対応
             pressCtrlAndKey('2'); // \
             delay(500);
-            Keyboard.print("frac");
-             Serial.println("ここまで来とる");
+            pressCtAltdKey('4');
              Serial.println(function);
             pressCtrlAndKey('3'); // {
             j++; // 'b'の次の文字に進む

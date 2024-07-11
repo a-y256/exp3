@@ -1,11 +1,11 @@
 #include <ResKeypad.h>
 
 // A0につながっているキーパッドをkeypad1とする
-ResKeypad keypad1(A0,16,RESKEYPAD_4X4,RESKEYPAD_4X4_SIDE_A); // SIDE Aに部品を実装した場合はこの行を有効にする
+ResKeypad keypad1(A4,16,RESKEYPAD_4X4,RESKEYPAD_4X4_SIDE_A); // SIDE Aに部品を実装した場合はこの行を有効にする
 //ResKeypad keypad1(A0,16,RESKEYPAD_4X4,RESKEYPAD_4X4_SIDE_B); // SIDE Bに部品を実装した場合はこの行を有効にする
 
 // A1につながっているキーパッドをkeypad2とする
-ResKeypad keypad2(A1,16,RESKEYPAD_4X4,RESKEYPAD_4X4_SIDE_A); // SIDE Aに部品を実装した場合はこの行を有効にする
+ResKeypad keypad2(A5,16,RESKEYPAD_4X4,RESKEYPAD_4X4_SIDE_A); // SIDE Aに部品を実装した場合はこの行を有効にする
 //ResKeypad keypad2(A1,16,RESKEYPAD_4X4,RESKEYPAD_4X4_SIDE_B); // SIDE Bに部品を実装した場合はこの行を有効にする
 
 char keys[] = {
