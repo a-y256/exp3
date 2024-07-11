@@ -332,7 +332,12 @@ void loop() {
       MGLCD.Reset();
       memset(enteredDigits, 0, sizeof(enteredDigits)); // 入力された数値をリセット
       i = 0;
+      n = 0;
+      m = 0;
+      func = "";
       MGLCD.Locate(0,1);
+      x = MGLCD.GetX();
+      y = MGLCD.GetY();
     }else if (str == "D"){
       int length = strlen(enteredDigits);
       if (length > 0) {
@@ -382,12 +387,9 @@ void loop() {
       Digit(str);
     }
     i += 1;
-    Serial.print(x);
-    Serial.print(",");
-    Serial.println(y);
   }
 
-   
+   //Serial.println(enteredDigits);
 }
 
 // 数式の評価
@@ -526,9 +528,16 @@ float calculateLog(String input) {
 }
 
 float evaluateFraction(String input) {
-    int firstSpace = input.indexOf(' ', 1); // "b"の次のスペースを見つける
-    float numerator = input.substring(1, firstSpace).toFloat(); // "b"の次の文字から最初のスペースまでの部分文字列を数値に変換
-    float denominator = input.substring(firstSpace + 1).toFloat(); // 最初のスペースの後から最後までの部分文字列を数値に変換
+   int firstSpace = input.indexOf(' ', 2); // "b "の次のスペースを見つける
+    int secondSpace = input.indexOf(' ', firstSpace + 1);
+
+    String numeratorStr = input.substring(2, firstSpace);
+    String denominatorStr = input.substring(firstSpace + 1, secondSpace);
+
+    float numerator = evaluateExpression(numeratorStr);
+    float denominator = evaluateExpression(denominatorStr);
+   
+
     return numerator / denominator;
 }
 
