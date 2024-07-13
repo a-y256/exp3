@@ -7,10 +7,24 @@
  
 # ファイル構成
  
-・mathで数式の計算のプログラム
+* mathで数式の計算のプログラム
+* graphicでディスプレイへの数式の描画、
+* wordでディスプレイに出力された数式をWordに出力
+* mainnewに1~4が統合されたプログラム
 
-・graphicでディスプレイへの数式の描画、
-
-・wordでディスプレイに出力された数式をWordに出力
-
-・mainnewに1~4が統合されたプログラム
+# 要件
+ 
+* Arduino IDE 1.8.19
+* AutoHotkey 1.1
+ 
+# 使用ライブラリ
+ 
+```bash
+#include <ResKeypad.h>
+#include <MGLCD.h>
+#include <MGLCD_SPI.h>
+#include <Arduino.h>
+#include <HID-Project.h>
+#include <math.h>
+```
+ 
