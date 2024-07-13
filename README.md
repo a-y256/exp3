@@ -16,7 +16,6 @@
  
 * Arduino IDE 1.8.19
 * AutoHotkey 1.1
-
  
 # 使用ライブラリ
  
@@ -28,4 +27,9 @@
 #include <HID-Project.h>
 #include <math.h>
 ```
+
+# 著者
+* JoJo616161 (math担当)
+* haNA-873 (graphic担当)
+* a-y256 (word及びマージ作業担当)
  
