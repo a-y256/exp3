@@ -100,6 +100,7 @@ int y;
 int i = 1;
 int n = 0;
 int m = 0;
+int l = 0;
 int xa;
 int ya;
 int xb;
@@ -304,18 +305,33 @@ void loop() {
     else if (func == "b"){ // 分数のカーソル移動
       if (n == 0){
         MGLCD.Locate(x-1, y-1);
-      }else if(n == 1){
-        MGLCD.Locate(x-1, y+2);
         m += 1;
+        if(m >= 2){
+          MGLCD.Locate(x, y+1);
+          MGLCD.print("\x85");
+          MGLCD.Locate(x, y);
+        }
+      }else if(n == 1){
+        MGLCD.Locate(x-m, y+2);
+        l += 1;
+        if(l >= 2){
+          MGLCD.Locate(x, y);
+        }
+        if(l > m){
+          MGLCD.Locate(x, y-1);
+          MGLCD.print("\x85");
+          MGLCD.Locate(x, y);
+        }
       }
       else if(n == 2){
         MGLCD.Locate(x-m, y+2);
       
         n = 0;
         m = 0;
+        l = 0;
         func = "";
       }
-    }else if (func == "r"){
+    }else if (func == "r"){ // 平方根のカーソル移動
       if(n == 0){
         MGLCD.Locate(x, y-1);
         MGLCD.print("\x84");
@@ -366,6 +382,8 @@ void loop() {
       MGLCD.Locate(x, y-1);
     }else if (str == "b"){ // 分数
       MGLCD.print("\x85");
+      strncpy(&enteredDigits[i], " ", 1);
+      i += 1;
       func = str;
     }else if (str == "P" || func == "H"){ // 割り振りなし
     }else if (str == "G"){ // 関数わけ
@@ -373,10 +391,55 @@ void loop() {
       n +=1;
     }else if (str == "s"){ // sin
       MGLCD.print("sin");
+      if(n == 0){
+        m += 2;
+        MGLCD.Locate(x, y);
+        MGLCD.print("\x85\x85");
+        MGLCD.Locate(x+2, y-1);
+      }
+      else if(n == 1){
+        l += 2;
+        MGLCD.Locate(x, y+1);
+        if(l > m){
+          MGLCD.print("\x85\x85");    
+        }
+        MGLCD.Locate(x-2, y+2);
+      }
     }else if (str == "c"){ // cos
       MGLCD.print("cos");
+      if(n == 0){
+        m += 2;
+        MGLCD.Locate(x, y);
+        MGLCD.print("\x85\x85");
+        MGLCD.Locate(x+2, y-1);
+      }
+      else if(n == 1){
+        l += 2;
+        MGLCD.Locate(x, y+1);
+        if(l > m){
+          MGLCD.print("\x85\x85");
+          MGLCD.Locate(x-2, y+3);    
+        }else{
+          MGLCD.Locate(x-2, y+2);
+        }
+        
+      }
     }else if (str == "t"){ // tan
       MGLCD.print("tan");
+      if(n == 0){
+        m += 2;
+        MGLCD.Locate(x, y);
+        MGLCD.print("\x85\x85");
+        MGLCD.Locate(x+2, y-1);
+      }
+      else if(n == 1){
+        l += 2;
+        MGLCD.Locate(x, y+1);
+        if(l > m){
+          MGLCD.print("\x85\x85");    
+        }
+        MGLCD.Locate(x-2, y+2);
+      }
     }else if (str == "i"){ // sin
       MGLCD.print("asin");
     }else if (str == "*"){ // 乗算
@@ -387,9 +450,8 @@ void loop() {
       Digit(str);
     }
     i += 1;
+    //Serial.println(enteredDigits);
   }
-
-   //Serial.println(enteredDigits);
 }
 
 // 数式の評価
